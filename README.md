@@ -9,3 +9,5 @@ Much of this project is powered by the blue alliance at https://www.theblueallia
     token=YourTokenHere
     ```
 3. Run main.py
+
+Requires the discord.py and dotenv libraries
