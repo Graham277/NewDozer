@@ -8,12 +8,14 @@ class ScoringGuide(commands.Cog):
         self.bot = bot
 
     # Guild syncing
-    guilds = [
-        int(os.getenv("guild_id")) if os.getenv("guild_id") else None,
-        int(os.getenv("dev_guild_id")) if os.getenv("dev_guild_id") else None,
-    ]
-    guilds = [g for g in guilds if g is not None]  # remove missing ones
-    @app_commands.guilds(*guilds)
+    guild_ids = []
+    main = os.getenv("guild_id")
+    dev = os.getenv("dev_guild_id")
+    if main:
+        guild_ids.append(int(main))
+    if dev:
+        guild_ids.append(int(dev))
+    @app_commands.guilds(*guild_ids)
 
     @app_commands.command(
         name="scoring_guide",
