@@ -17,4 +17,4 @@ Much of this project is powered by the blue alliance at https://www.theblueallia
     This allows you to develop and test the status on your own server without clogging up the production server.
 5. Run main.py
 
-Requires the discord.py and dotenv libraries
+Requires the discord.py, requests, pillow, and dotenv libraries
