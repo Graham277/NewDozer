@@ -60,12 +60,18 @@ class ExampleTBA(commands.Cog):
                     "No data."
                 )
 
+            # To return results, either send a message or send an embed
+            # Remove the option you won't be using, as you can only respond once
+
+            # Message:
+            await interaction.response.send_message("Example message here")
+
+            # Embed:
             embed = discord.Embed(
                 title=f"Description of content here",
-                description=data,
+                description="Here's the example data:\n" + data,
                 color=discord.Color.default()
             )
-
             await interaction.followup.send(embed=embed)
 
         except Exception as e:

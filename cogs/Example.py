@@ -30,7 +30,20 @@ class Example(commands.Cog):
         description="Put a description of the command here"
     )
     async def example(self, interaction: discord.Interaction):
+
+        # To return results, either send a message or send an embed
+        # Remove the option you won't be using, as you can only respond once
+
+        # Message:
         await interaction.response.send_message("This is an example")
+
+        # Embed:
+        embed = discord.Embed(
+            title=f"Description of content here",
+            description="Some description here",
+            color=discord.Color.default()
+        )
+        await interaction.followup.send(embed=embed)
 
 
 async def setup(bot):
