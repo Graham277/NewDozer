@@ -1,3 +1,5 @@
+# Returns the 'NoBlueBanners' photo which is stored locally
+
 import os
 
 import discord

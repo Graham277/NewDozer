@@ -4,12 +4,14 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+# Secrets are stored in a dotenv, so we must load it before trying to access it
 load_dotenv()
 
+# Set up the bot
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-
+# This is run when the bot is started by discord.py, it syncs the commands to the guilds specified
 @bot.event
 async def on_ready():
     guild_id = os.getenv("guild_id")
@@ -26,6 +28,7 @@ async def on_ready():
         print(f"Cleared and synced {len(synced)} commands to {guild.id}")
 
 
+# Loads all the slash commands so they can be added to the bot and synced
 async def load_extensions():
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
@@ -33,6 +36,7 @@ async def load_extensions():
     print("Extensions all loaded")
 
 
+# Loads slash commands, starts the bot
 if __name__ == "__main__":
     import asyncio
 

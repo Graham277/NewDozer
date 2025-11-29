@@ -1,3 +1,9 @@
+# This file is meant to be an example of how to create commands that use the TBA api and is not loaded in main.py
+# For info the tba api: https://www.thebluealliance.com/apidocs/v3
+# After making your command file add a line to load it in main.py
+# The line will look like this in the load_extensions function:
+# await bot.load_extension("cogs.ExampleTBA")
+
 import os
 
 import discord

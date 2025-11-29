@@ -1,3 +1,5 @@
+# Returns the 'ScoringGuide' photo which is stored locally
+
 import os
 
 import discord
