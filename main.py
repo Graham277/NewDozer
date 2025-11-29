@@ -25,7 +25,7 @@ async def on_ready():
 
     for guild in guilds:
         synced = await bot.tree.sync(guild=guild)
-        print(f"Cleared and synced {len(synced)} commands to {guild.id}")
+        print(f"Synced {len(synced)} commands to {guild.id}")
 
 
 # Loads all the slash commands so they can be added to the bot and synced
@@ -33,6 +33,7 @@ async def load_extensions():
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
     await bot.load_extension("cogs.TeamData")
+    await bot.load_extension("cogs.Status")
     print("Extensions all loaded")
 
 
