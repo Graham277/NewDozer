@@ -18,3 +18,15 @@ Much of this project is powered by the blue alliance at https://www.theblueallia
 5. Run main.py
 
 Requires the discord.py, requests, pillow, and dotenv libraries
+
+## TODO:
+- Implement caching TBA responses with the ETag, If-None-Match and Cache-Control headers
+  (see https://www.thebluealliance.com/apidocs)
+- Implement the following slash commands:
+  - Alliances
+  - Rankings
+  - EPA Rankings
+  - Events
+  - Match
+  - Schedule
+  - Watch
