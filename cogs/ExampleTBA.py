@@ -47,8 +47,11 @@ class ExampleTBA(commands.Cog):
 
             data_request = requests.get(f"https://www.thebluealliance.com/api/v3/", headers=headers)
 
+            if data_request.status_code == 401:
+                return await interaction.followup.send(f"Provide a valid TBA auth key to use TBA commands")
+
             if data_request.status_code != 200:
-                return await interaction.followup.send(f"Does not exist on TBA")
+                return await interaction.followup.send(f"TBA did not provide a response")
 
             data = data_request.json()
 

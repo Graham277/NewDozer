@@ -48,6 +48,9 @@ class TeamData(commands.Cog):
 
             data_request = requests.get(f"https://www.thebluealliance.com/api/v3/team/frc{team}", headers=headers)
 
+            if data_request.status_code == 401:
+                return await interaction.followup.send(f"Provide a valid TBA auth key to use TBA commands")
+
             if data_request.status_code != 200:
                 return await interaction.followup.send(f"Team {team} does not exist on The Blue Alliance.")
 
