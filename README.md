@@ -29,4 +29,3 @@ Requires the discord.py, statbotics, requests, pillow, and dotenv libraries
   - Events
   - Match
   - Schedule
-  - Watch
