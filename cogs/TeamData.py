@@ -4,15 +4,16 @@
 # The colour of the embed is determined by the average colour of the profile pic
 
 import base64
+import datetime
 import io
 import os
 
 import discord
 import requests
+import statbotics
 from PIL import Image
 from discord import app_commands
 from discord.ext import commands
-
 
 class TeamData(commands.Cog):
     def __init__(self, bot):
@@ -46,64 +47,25 @@ class TeamData(commands.Cog):
             if not team:
                 team = 2200
 
-            data_request = requests.get(f"https://www.thebluealliance.com/api/v3/team/frc{team}", headers=headers)
+            # Get tba data
+            tba_output = await get_tba_data(interaction, team, headers)
 
-            if data_request.status_code == 401:
-                return await interaction.followup.send(f"Provide a valid TBA auth key to use TBA commands")
+            # Get statbotics data
+            mean_epa, overall_rank, district_rank = await get_statbotics_data(interaction, team)
 
-            if data_request.status_code != 200:
-                return await interaction.followup.send(f"Team {team} does not exist on The Blue Alliance.")
-
-            data = data_request.json()
-
-            if data is None:
-                return await interaction.followup.send(
-                    f"Team {team} exists, but has no data."
-                )
-
-            # Remove keys we don't want
-            keys_to_remove = [
-                "team_number"
-                "address",
-                "postal_code",
-                "gmaps_place_id",
-                "gmaps_url",
-                "lat",
-                "lng",
-                "location_name",
-                "key"
-            ]
-            for key in keys_to_remove:
-                data.pop(key, None)
-
-            # Rename name to sponsors, since that's what it actually is
-            data["sponsors"] = data.pop("name", None)
-
-            # Set a desired order for them to be displayed
-            desired_order = [
-                "nickname",
-                "rookie_year",
-                "city",
-                "state_prov",
-                "country",
-                "website",
-                "sponsors"
-            ]
-
-            # Make the output human-readable and in order
-            output_lines = []
-            for key in desired_order:
-                if key in data:
-                    value = data[key] if data[key] is not None else "None"
-                    output_lines.append(f"**{key.replace('_', ' ').title()}**: {value}")
-            output = "\n".join(output_lines)
+            # Only if the data is returned is it added to the output
+            if mean_epa and overall_rank and district_rank and tba_output:
+                output = (f"**EPA:** {mean_epa} "
+                          f"\n**Global Rank (EPA):** {overall_rank} "
+                          f"\n**District Rank (EPA):** {district_rank}\n")
+                output += "\n".join(tba_output)
+            else:
+                output = "No data available for this team."
 
             # Get the avatar/pfp and the average color of it for the embed from a helper function
             avatar, avg_color_hex = get_avatar_and_color(team=team, headers=headers)
 
-            if not output:
-                output = "No data available for this team."
-
+            # Create the embed to send
             embed = discord.Embed(
                 title=f"Team {team} Data",
                 description=output,
@@ -113,12 +75,69 @@ class TeamData(commands.Cog):
             # If they have an avatar include it
             if avatar:
                 embed.set_thumbnail(url="attachment://avatar.png")
-                await interaction.followup.send(embed=embed, file=avatar)
+                return await interaction.followup.send(embed=embed, file=avatar)
             else:
-                await interaction.followup.send(embed=embed)
+                return await interaction.followup.send(embed=embed)
 
         except Exception as e:
             return await interaction.followup.send(f"An error occurred:\n```\n{e}\n```")
+
+
+async def get_tba_data(interaction: discord.Interaction, team, headers):
+    data_request = requests.get(
+        f"https://www.thebluealliance.com/api/v3/team/frc{team}",
+        headers=headers
+    )
+
+    if data_request.status_code == 401:
+        return await interaction.followup.send(f"Provide a valid TBA auth key to use TBA commands")
+
+    if data_request.status_code != 200:
+        return await interaction.followup.send(f"Team {team} does not exist on The Blue Alliance.")
+
+    data = data_request.json()
+
+    if data is None:
+        return await interaction.followup.send(
+            f"Team {team} exists, but has no data."
+        )
+
+    # Rename name to sponsors, since that's what it actually is
+    data["sponsors"] = data.pop("name", None)
+
+    # Set a desired order for them to be displayed
+    desired_order = [
+        "nickname",
+        "rookie_year",
+        "city",
+        "state_prov",
+        "country",
+        "website",
+        "sponsors"
+    ]
+
+    # Make the output human-readable and in order
+    tba_output = []
+    for key in desired_order:
+        if key in data:
+            value = data[key] if data[key] is not None else "None"
+
+            tba_output.append(f"**{key.replace('_', ' ').title()}**: {value}")
+    return tba_output
+
+async def get_statbotics_data(interaction: discord.Interaction, team):
+    sb = statbotics.Statbotics()
+    year = datetime.datetime.now().year
+    try:
+        data = sb.get_team_year(team, year, ['epa'])
+    except Exception as e:
+        return await interaction.followup.send(f"An error occurred in statbotics:\n```\n{e}\n```")
+
+    mean_epa = data["epa"]["total_points"]["mean"]
+    overall_rank = data["epa"]["ranks"]["total"]["rank"]
+    district_rank = data["epa"]["ranks"]["district"]["rank"]
+
+    return mean_epa, overall_rank, district_rank
 
 
 # Helper function to get the avatar of the team and calc it's average color
