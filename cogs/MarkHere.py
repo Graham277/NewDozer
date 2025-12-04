@@ -36,16 +36,16 @@ class MarkHere(commands.Cog):
 
         timestamp = floor(time.time())
         if code not in self.communicator.db_temp:
-            await interaction.response().send_message(content=f"Code does not exist! Was it typed correctly?")
+            await interaction.response.send_message(content=f"Code does not exist! Was it typed correctly?")
             return
         # if code is no longer valid
         if timestamp > self.communicator.db_temp[code]:
-            await interaction.response().send_message(content=f"Code is no longer valid!")
+            await interaction.response.send_message(content=f"Code is no longer valid!")
             return
 
         # so commit the record to memory
         self.communicator.db_connection.execute("INSERT INTO Attendance (user, timestamp) VALUES (?, ?)", (interaction.user.name, timestamp))
-        await interaction.response().send_message(content=f"Marked {interaction.user.name} as present (code: {code})")
+        await interaction.response.send_message(content=f"Marked {interaction.user.name} as present (code: {code})")
 
 async def setup(bot):
     await bot.add_cog(MarkHere(bot))
