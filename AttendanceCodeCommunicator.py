@@ -1,99 +1,137 @@
 import logging
 import json
 import socket
-import socketserver
+import sqlite3
 import threading
-from operator import truediv
+from enum import Enum
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def run():
-    # Specs:
-    #
-    # A screen sends out a 255.255.255.255 broadcast app: attendance, type: discovery, version: 1 (as of now), host matching local IP
-    # Server connects to host given in the parameter
-    #
-    # On connect, screen sends JSON object with type = "connect"
-    # Server sends type = "acknowledge", targeting = "connect"
-    # On every code generation event (screen): type = "code", code = <generated code>, generation_time = <generation Unix timestamp>
-    # Server acknowledges with type = "acknowledge", targeting = "code", code = <same>, valid_to = <expiry time>
-    # Every 10s, screen sends type = "heartbeat", counter = <counter that increments each heartbeat>
-    # Server sends type = "acknowledge", targeting = "heartbeat", counter = <counter>
-    #
-    # Errors:
-    # If the heartbeat counters do not match, server sends type = "heartbeat_error", counter = <corrected value>
-    # If connection fails, disconnect and try again after 10s
-    #
-    # Note that the "server" here is the discord bot, but the server is technically the tablet
-    def _communicate():
-        broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        broadcast_in_sock.connect(('0.0.0.0', 5789))
+class Status(Enum):
+    DISCONNECTED = 0
+    CONNECTING = 1
+    CONNECTED = 2
+class AttendanceCodeCommunicator:
 
-    thread = threading.Thread(target=_communicate, daemon=True)
-    thread.start()
+    db_connection = None
+    db_temp = {}
+    status: Status = Status.DISCONNECTED
 
-def _discover(sock: socket.socket):
+    def __init__(self, db_path):
+        db_connection = sqlite3.connect(db_path)
+        db_connection.execute("CREATE TABLE IF NOT EXISTS Attendance ( user VARCHAR(255), timestamp INTEGER );")
 
-    const_version = 1
+    def run(self):
+        # Specs:
+        #
+        # A screen sends out a 255.255.255.255 broadcast app: attendance, type: discovery, version: 1 (as of now), host matching local IP
+        # Server connects to host given in the parameter
+        #
+        # On connect, screen sends JSON object with type = "connect"
+        # Server sends type = "acknowledge", targeting = "connect"
+        # On every code generation event (screen): type = "code", code = <generated code>, generation_time = <generation Unix timestamp>
+        # Server acknowledges with type = "acknowledge", targeting = "code", code = <same>, valid_to = <expiry time>
+        # Every 10s, screen sends type = "heartbeat", counter = <counter that increments each heartbeat>
+        # Server sends type = "acknowledge", targeting = "heartbeat", counter = <counter>
+        #
+        # Errors:
+        # If the heartbeat counters do not match, server sends type = "heartbeat_error", counter = <corrected value>
+        # If connection fails, disconnect and try again after 10s
+        #
+        # Note that the "server" here is the discord bot, but the server is technically the tablet
+        def _communicate():
+            """
+            Attempt to communicate with the remote screen.
+            Handles both broadcasts and regular communication.
+            Intended to be run as a thread
+            :return:  None
+            """
+            logging.log(logging.INFO, f"Starting attendance communicator")
+            broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            broadcast_in_sock.connect(('0.0.0.0', 5789))
+            logging.log(logging.INFO, "Now listening on 0.0.0.0 port 5789")
+            host = self._discover(broadcast_in_sock)
+            logging.log(logging.INFO, "Found an endpoint")
+            self.status = Status.CONNECTING
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, 5789))
 
-    while True:
-        message = json.loads(sock.recv) #something? TODO FIX
-        if message['app'] == 'attendance' and message['type'] == 'discovery' and message['version'] == const_version:
-            return message['host']
+            if self._handshake(sock):
+                self.status = Status.CONNECTED
+                self._communicate_after_handshake(sock)
 
-def _communicate_after_handshake(request):
+        thread = threading.Thread(target=_communicate, daemon=True)
+        thread.start()
 
-    const_code_valid_duration = 30 # seconds
+    def _discover(self, sock: socket.socket):
 
-    counter = 0
+        const_version = 1
 
-    connect_message = json.loads(request.recv(256))
-    if connect_message['type'] != 'connect':
-        logging.log(logging.ERROR, f"Failed to connect with client, wrong type {connect_message['type']}")
-        return  # let client try again after 10s
+        while True:
+            try:
+                message = json.loads(sock.recv(1024))
+            except ValueError:
+                continue
+            if message['app'] == 'attendance' and message['type'] == 'discovery' and message['version'] == const_version:
+                return message['host']
 
-    response = {
-        'type': 'acknowledge',
-        'targeting': connect_message['type']
-    }
-    request.sendall(json.dumps(response))
+    def _handshake(self, sock: socket.socket):
 
-    while True:
-        message = json.loads(request.recv(256))
+        connect_message = json.loads(sock.recv(1024))
+        if connect_message['type'] != 'connect':
+            logging.log(logging.ERROR, f"Failed to connect with endpoint, wrong type {connect_message['type']}")
+            return False # let endpoint try again after 10s
 
-        if message['type'] == 'heartbeat':
-            counter += 1
-            if counter != message['counter']:
-                response = {
-                    'type': 'heartbeat_error',
-                    'counter': counter
-                }
-                request.sendall(json.dumps(response))
+        response = {
+            'type': 'acknowledge',
+            'targeting': connect_message['type']
+        }
+        sock.sendall(bytes(json.dumps(response), 'utf-8'))
+        return True
 
-                logging.log(logging.WARN,
-                            f"Connection error with attendance code client: got counter {message['counter']}, expected {counter}")
+    def _communicate_after_handshake(self, sock: socket.socket):
 
-            else:
+        const_code_show_duration = 30 # seconds
+        const_code_valid_duration = 60 # seconds
+
+        counter = 0
+
+        while True:
+            message = json.loads(sock.recv(1024))
+
+            if message['type'] == 'heartbeat':
+                counter += 1
+                if counter != message['counter']:
+                    response = {
+                        'type': 'heartbeat_error',
+                        'counter': counter
+                    }
+                    sock.sendall(bytes(json.dumps(response), 'utf-8'))
+
+                    logging.log(logging.WARN,
+                                f"Connection error with attendance code endpoint: got counter {message['counter']}, expected {counter}")
+
+                else:
+                    response = {
+                        'type': 'acknowledge',
+                        'targeting': message['type'],
+                        'counter': counter
+                    }
+                    sock.sendall(bytes(json.dumps(response), 'utf-8'))
+
+            elif message['type'] == 'code':
+                code = int(message['code'])
+                generation_time = int(message['generation_time'])
                 response = {
                     'type': 'acknowledge',
                     'targeting': message['type'],
-                    'counter': counter
+                    'code': code,
+                    'valid_to': generation_time + const_code_show_duration
                 }
-                request.sendall(json.dumps(response))
+                sock.sendall(bytes(json.dumps(response), 'utf-8'))
+                self.db_temp[response['code']] = generation_time + const_code_valid_duration
 
-        elif message['type'] == 'code':
-            code = int(message['code'])
-            generation_time = int(message['generation_time'])
-            response = {
-                'type': 'acknowledge',
-                'targeting': message['type'],
-                'code': code,
-                'valid_to': generation_time + const_code_valid_duration
-            }
-            request.sendall(json.dumps(response))
-            # TODO commit to a db somewhere
-
-        else:
-            logging.log(logging.WARN, f"Unknown message {message['type']}, ignoring")
+            else:
+                logging.log(logging.WARN, f"Unknown message {message['type']}, ignoring")

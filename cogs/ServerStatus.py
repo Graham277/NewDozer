@@ -28,7 +28,6 @@ class ServerStatus(commands.Cog):
     )
 
     async def execute(self, interaction: discord.Interaction):
-        fetch_message = interaction.response.send_message("Fetching server status...")
 
         # get status
         tba_response = requests.get('https://www.thebluealliance.com/api/v3/status')
@@ -44,9 +43,6 @@ class ServerStatus(commands.Cog):
 
         frc_response = requests.get('https://frc-api.firstinspires.org/v3.0?rand=${dayjs().unix()}')
         frc_status = frc_response.status_code
-
-        # make sure fetch message finishes
-        await fetch_message
 
         # format everything
 

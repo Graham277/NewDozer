@@ -27,6 +27,7 @@ async def load_extensions():
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
     await bot.load_extension("cogs.ServerStatus")
+    await bot.load_extension("cogs.MarkHere")
     print("Extensions all loaded")
 
 if __name__ == "__main__":
