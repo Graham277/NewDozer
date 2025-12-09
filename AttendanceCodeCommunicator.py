@@ -72,24 +72,22 @@ class AttendanceCodeCommunicator:
             message = json.loads(data)
 
             if message['type'] == 'heartbeat':
+                response = {
+                    'type': 'acknowledge',
+                    'targeting': message['type'],
+                    'counter': counter
+                }
                 counter += 1
-                if counter != message['counter']:
-                    response = {
-                        'type': 'heartbeat_error',
-                        'counter': counter
-                    }
-                    sock.sendall(bytes(json.dumps(response), 'utf-8'))
+                sock.sendall(bytes(json.dumps(response), 'utf-8'))
 
-                    logging.log(logging.WARN,
-                                f"Connection error with attendance code endpoint: got counter {message['counter']}, expected {counter}")
-
-                else:
-                    response = {
-                        'type': 'acknowledge',
-                        'targeting': message['type'],
-                        'counter': counter
-                    }
-                    sock.sendall(bytes(json.dumps(response), 'utf-8'))
+            elif message['type'] == 'heartbeat_error':
+                response = {
+                    'type': 'acknowledge',
+                    'targeting': message['type']
+                }
+                sock.sendall(bytes(json.dumps(response), 'utf-8'))
+                logging.log(logging.WARN, f"Logged heartbeat error: expected {counter}, told {message['counter']}")
+                counter = message['counter']
 
             elif message['type'] == 'code':
                 code = int(message['code'])
