@@ -2,6 +2,7 @@ import logging
 import json
 import socket
 import sqlite3
+import sys
 import threading
 from enum import Enum
 
@@ -18,56 +19,16 @@ class AttendanceCodeCommunicator:
     db_connection = None
     db_temp = {}
     status: Status = Status.DISCONNECTED
+    thread: threading.Thread = None
 
     def __init__(self, db_path):
         db_connection = sqlite3.connect(db_path)
         db_connection.execute("CREATE TABLE IF NOT EXISTS Attendance ( user VARCHAR(255), timestamp INTEGER );")
 
-    def run(self):
-        # Specs:
-        #
-        # A screen sends out a 255.255.255.255 broadcast app: attendance, type: discovery, version: 1 (as of now), host matching local IP
-        # Server connects to host given in the parameter
-        #
-        # On connect, screen sends JSON object with type = "connect"
-        # Server sends type = "acknowledge", targeting = "connect"
-        # On every code generation event (screen): type = "code", code = <generated code>, generation_time = <generation Unix timestamp>
-        # Server acknowledges with type = "acknowledge", targeting = "code", code = <same>, valid_to = <expiry time>
-        # Every 10s, screen sends type = "heartbeat", counter = <counter that increments each heartbeat>
-        # Server sends type = "acknowledge", targeting = "heartbeat", counter = <counter>
-        #
-        # Errors:
-        # If the heartbeat counters do not match, server sends type = "heartbeat_error", counter = <corrected value>
-        # If connection fails, disconnect and try again after 10s
-        #
-        # Note that the "server" here is the discord bot, but the server is technically the tablet
-        def _communicate():
-            """
-            Attempt to communicate with the remote screen.
-            Handles both broadcasts and regular communication.
-            Intended to be run as a thread
-            :return:  None
-            """
-            logging.log(logging.INFO, f"Starting attendance communicator")
-            broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            broadcast_in_sock.connect(('0.0.0.0', 5789))
-            logging.log(logging.INFO, "Now listening on 0.0.0.0 port 5789")
-            host = self._discover(broadcast_in_sock)
-            logging.log(logging.INFO, "Found an endpoint")
-            self.status = Status.CONNECTING
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, 5789))
-
-            if self._handshake(sock):
-                self.status = Status.CONNECTED
-                self._communicate_after_handshake(sock)
-
-        thread = threading.Thread(target=_communicate, daemon=True)
-        thread.start()
-
     def _discover(self, sock: socket.socket):
 
         const_version = 1
+        logging.log(logging.DEBUG, "Discovering available endpoints")
 
         while True:
             try:
@@ -75,6 +36,7 @@ class AttendanceCodeCommunicator:
             except ValueError:
                 continue
             if message['app'] == 'attendance' and message['type'] == 'discovery' and message['version'] == const_version:
+                logging.log(logging.DEBUG, "Found an available endpoint")
                 return message['host']
 
     def _handshake(self, sock: socket.socket):
@@ -82,13 +44,15 @@ class AttendanceCodeCommunicator:
         connect_message = json.loads(sock.recv(1024))
         if connect_message['type'] != 'connect':
             logging.log(logging.ERROR, f"Failed to connect with endpoint, wrong type {connect_message['type']}")
-            return False # let endpoint try again after 10s
+            return False # let endpoint try again
 
         response = {
             'type': 'acknowledge',
             'targeting': connect_message['type']
         }
-        sock.sendall(bytes(json.dumps(response), 'utf-8'))
+        val1_tmp = json.dumps(response)
+        val2_tmp = val1_tmp.encode()
+        sock.send(val2_tmp)
         return True
 
     def _communicate_after_handshake(self, sock: socket.socket):
@@ -99,7 +63,13 @@ class AttendanceCodeCommunicator:
         counter = 0
 
         while True:
-            message = json.loads(sock.recv(1024))
+
+            data = sock.recv(1024)
+            if len(data) == 0:
+                logging.log(logging.WARN, "Remote endpoint disconnected")
+                return
+
+            message = json.loads(data)
 
             if message['type'] == 'heartbeat':
                 counter += 1
@@ -135,3 +105,50 @@ class AttendanceCodeCommunicator:
 
             else:
                 logging.log(logging.WARN, f"Unknown message {message['type']}, ignoring")
+
+    def _communicate(self):
+        """
+        Attempt to communicate with the remote screen.
+        Handles both broadcasts and regular communication.
+        Intended to be run as a thread
+        :return:  None
+        """
+        while True:
+            logging.log(logging.INFO, f"Communicator thread started")
+            broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            broadcast_in_sock.bind(('0.0.0.0', 5789))
+            logging.log(logging.INFO, "Now listening on 0.0.0.0 port 5789")
+            host = self._discover(broadcast_in_sock)
+            logging.log(logging.INFO, "Found an endpoint")
+            self.status = Status.CONNECTING
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, 5789))
+
+            if self._handshake(sock):
+                self.status = Status.CONNECTED
+                self._communicate_after_handshake(sock)
+
+
+    def run(self):
+        # Specs:
+        #
+        # A screen sends out a 255.255.255.255 broadcast app: attendance, type: discovery, version: 1 (as of now), host matching local IP
+        # Server connects to host given in the parameter
+        #
+        # On connect, screen sends JSON object with type = "connect"
+        # Server sends type = "acknowledge", targeting = "connect"
+        # On every code generation event (screen): type = "code", code = <generated code>, generation_time = <generation Unix timestamp>
+        # Server acknowledges with type = "acknowledge", targeting = "code", code = <same>, valid_to = <expiry time>
+        # Every 10s, screen sends type = "heartbeat", counter = <counter that increments each heartbeat>
+        # Server sends type = "acknowledge", targeting = "heartbeat", counter = <counter>
+        #
+        # Errors:
+        # If the heartbeat counters do not match, server sends type = "heartbeat_error", counter = <corrected value>
+        # If connection fails, disconnect and try again after 10s
+        #
+        # Note that the "server" here is the discord bot, but the server is technically the tablet
+
+        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+        logging.log(logging.INFO, f"Starting attendance communicator")
+        self.thread = threading.Thread(target=self._communicate, daemon=True)
+        self.thread.start()

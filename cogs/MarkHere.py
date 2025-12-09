@@ -15,8 +15,8 @@ class MarkHere(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.communicator = AttendanceCodeCommunicator("db.sqlite")
-        self.communicator.run() # starts background threa
+        communicator = AttendanceCodeCommunicator("db.sqlite")
+        communicator.run() # starts background thread
 
     # Guild syncing
     guilds = [
