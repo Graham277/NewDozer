@@ -2,4 +2,5 @@
 .vscode/
 .env
 db.sqlite
-__pycache__/
+pycache
+**/__pycache__/
