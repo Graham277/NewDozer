@@ -18,15 +18,16 @@ class Status(Enum):
 class AttendanceCodeCommunicator:
 
     db_connection = None
-    db_temp = {}
+    received_codes = {}
+    claimed_codes = []
     status: Status = Status.DISCONNECTED
     thread: threading.Thread = None
 
     def __init__(self, db_path):
         if not os.path.isfile(db_path):
             open(db_path, 'w').close()
-        db_connection = sqlite3.connect(db_path)
-        db_connection.execute("CREATE TABLE IF NOT EXISTS Attendance ( user VARCHAR(255), timestamp INTEGER );")
+        self.db_connection = sqlite3.connect(db_path)
+        self.db_connection.execute("CREATE TABLE IF NOT EXISTS Attendance ( user VARCHAR(255), timestamp INTEGER );")
 
     def _discover(self, sock: socket.socket):
 
@@ -102,7 +103,7 @@ class AttendanceCodeCommunicator:
                     'valid_to': generation_time + const_code_show_duration
                 }
                 sock.sendall(bytes(json.dumps(response), 'utf-8'))
-                self.db_temp[response['code']] = generation_time + const_code_valid_duration
+                self.received_codes[response['code']] = generation_time + const_code_valid_duration
 
             else:
                 logging.log(logging.WARN, f"Unknown message {message['type']}, ignoring")
