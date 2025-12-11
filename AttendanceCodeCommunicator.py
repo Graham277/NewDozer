@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 import socket
 import sqlite3
 import sys
@@ -22,6 +23,8 @@ class AttendanceCodeCommunicator:
     thread: threading.Thread = None
 
     def __init__(self, db_path):
+        if not os.path.isfile(db_path):
+            open(db_path, 'w').close()
         db_connection = sqlite3.connect(db_path)
         db_connection.execute("CREATE TABLE IF NOT EXISTS Attendance ( user VARCHAR(255), timestamp INTEGER );")
 
