@@ -49,6 +49,7 @@ class MarkHere(commands.Cog):
 
         # so commit the record to memory
         self.communicator.db_connection.execute("INSERT INTO Attendance (user, timestamp) VALUES (?, ?)", (interaction.user.name, timestamp))
+        self.communicator.db_connection.commit()
         # TODO: clean up codes periodically to get rid of long-expired ones
         self.communicator.claimed_codes.append(code)
         await interaction.response.send_message(content=f"Marked {interaction.user.name} as present (code: {code})")
