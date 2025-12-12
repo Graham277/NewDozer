@@ -118,8 +118,8 @@ class AttendanceCodeCommunicator:
         while True:
             logging.log(logging.INFO, f"Communicator thread started")
             broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            broadcast_in_sock.bind(('0.0.0.0', 5789))
-            logging.log(logging.INFO, "Now listening on 0.0.0.0 port 5789")
+            broadcast_in_sock.bind(('', 5789))
+            logging.log(logging.INFO, "Now listening on all interfaces, port 5789")
             host = self._discover(broadcast_in_sock)
             logging.log(logging.INFO, "Found an endpoint")
             self.status = Status.CONNECTING
