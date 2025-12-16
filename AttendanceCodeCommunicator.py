@@ -129,7 +129,7 @@ class AttendanceCodeCommunicator:
                 broadcast_in_sock.bind(('', 5789))
                 logging.log(logging.INFO, "Now listening on all interfaces, port 5789")
                 host = self._discover(broadcast_in_sock)
-                logging.log(logging.INFO, "Found an endpoint")
+                logging.log(logging.INFO, f"Found an endpoint at {host}")
                 self.status = Status.CONNECTING
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((host, 5789))
