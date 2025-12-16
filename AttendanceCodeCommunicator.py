@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import json
 import os
@@ -40,7 +41,13 @@ class AttendanceCodeCommunicator:
             except ValueError:
                 continue
             if message['app'] == 'attendance' and message['type'] == 'discovery' and message['version'] == const_version:
+
                 logging.log(logging.DEBUG, "Found an available endpoint")
+                if ipaddress.ip_address(message['host']).is_loopback:
+                    logging.log(logging.WARNING, "Received valid broadcast, but the host is a loopback address"
+                                                 f" ({message['host']}). Check the network configuration on the client.")
+                    continue
+
                 return message['host']
 
     def _handshake(self, sock: socket.socket):
