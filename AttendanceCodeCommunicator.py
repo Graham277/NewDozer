@@ -108,7 +108,7 @@ class AttendanceCodeCommunicator:
             else:
                 logging.log(logging.WARN, f"Unknown message {message['type']}, ignoring")
 
-    def _communicate(self):
+    def _communicate(self, should_fail_on_exception: bool):
         """
         Attempt to communicate with the remote screen.
         Handles both broadcasts and regular communication.
@@ -116,19 +116,27 @@ class AttendanceCodeCommunicator:
         :return:  None
         """
         while True:
-            logging.log(logging.INFO, f"Communicator thread started")
-            broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            broadcast_in_sock.bind(('', 5789))
-            logging.log(logging.INFO, "Now listening on all interfaces, port 5789")
-            host = self._discover(broadcast_in_sock)
-            logging.log(logging.INFO, "Found an endpoint")
-            self.status = Status.CONNECTING
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, 5789))
+            try:
+                logging.log(logging.INFO, f"Communicator thread started")
+                broadcast_in_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                broadcast_in_sock.bind(('', 5789))
+                logging.log(logging.INFO, "Now listening on all interfaces, port 5789")
+                host = self._discover(broadcast_in_sock)
+                logging.log(logging.INFO, "Found an endpoint")
+                self.status = Status.CONNECTING
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((host, 5789))
 
-            if self._handshake(sock):
-                self.status = Status.CONNECTED
-                self._communicate_after_handshake(sock)
+                if self._handshake(sock):
+                    self.status = Status.CONNECTED
+                    self._communicate_after_handshake(sock)
+            except socket.error as e:
+                if should_fail_on_exception:
+                    logging.log(logging.ERROR, f"Exception raised during communication!")
+                    raise e # terminates thread
+                else:
+                    logging.log(logging.ERROR, f"Exception raised during communication - {e} - continuing anyways!")
+                    # loop again
 
 
     def run(self):
@@ -152,5 +160,5 @@ class AttendanceCodeCommunicator:
 
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
         logging.log(logging.INFO, f"Starting attendance communicator")
-        self.thread = threading.Thread(target=self._communicate, daemon=True)
+        self.thread = threading.Thread(target=lambda: self._communicate(False), daemon=True)
         self.thread.start()
