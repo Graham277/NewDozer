@@ -36,7 +36,7 @@ async def load_extensions(disable_attendance_features=False):
 if __name__ == "__main__":
     # parse command line
     disable_attendance_features = False
-    for arg in sys.argv:
+    for arg in sys.argv[1:]:
         match arg:
             case "--disable-attendance":
                 if not disable_attendance_features:
