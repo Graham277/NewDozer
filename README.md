@@ -63,7 +63,7 @@ your own server without clogging up the production server.
 
 ## Running
 The bot takes the following command-line parameter(s):
-* *`--disable-attendance`*: disable all attendance features. The server will 
+* `--disable-attendance`: disable all attendance features. The server will 
   not be started and the OAuth tokens will not be used/verified.
 
 Launch `main.py` with `python3` to run the app.
