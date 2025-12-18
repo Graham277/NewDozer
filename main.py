@@ -1,3 +1,5 @@
+import sys
+
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -23,15 +25,28 @@ async def on_ready():
         synced = await bot.tree.sync(guild=guild)
         print(f"Cleared and synced {len(synced)} commands to {guild.id}")
 
-async def load_extensions():
+async def load_extensions(disable_attendance_features=False):
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
     await bot.load_extension("cogs.ServerStatus")
-    await bot.load_extension("cogs.MarkHere")
-    await bot.load_extension("cogs.Example")
+    if not disable_attendance_features:
+        await bot.load_extension("cogs.MarkHere")
     print("Extensions all loaded")
 
 if __name__ == "__main__":
+    # parse command line
+    disable_attendance_features = False
+    for arg in sys.argv:
+        match arg:
+            case "--disable-attendance":
+                if not disable_attendance_features:
+                    disable_attendance_features = True
+                else:
+                    print(f"Duplicate argument {arg}")
+                    os._exit(2)
+            case _: # default
+                print(f"Unrecognized argument {arg}")
+
     import asyncio
     asyncio.run(load_extensions())
     token = os.getenv("token")
