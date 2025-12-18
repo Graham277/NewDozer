@@ -6,4 +6,4 @@ db.sqlite-journal
 pycache
 **/__pycache__/
 .venv/
-client_secret.json
+secrets.json
