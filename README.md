@@ -18,6 +18,7 @@ First `cd` to the project directory, then set up like so:
 virtualenv .venv
 source .venv/activate # on Linux
 ```
+<!-- TODO: add instructions for Windows machines -->
 
 Certain IDEs (i.e. PyCharm) have these functions condensed into a menu.
 
