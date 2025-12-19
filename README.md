@@ -55,12 +55,26 @@ your own server without clogging up the production server.
 ### Setting up the attendance scripts
 1. Install a keyring manager. On a desktop system, this should already exist;
    it may need to be added for a server.
-2. Configure and OAuth2 client (in Google Cloud) that has access to the `files`
-   scope for Google Sheets (can read and write files used with this
-   application).
-3. Set up the credentials. TODO: specify which credentials are needed.
-4. Install the client on a device on the same network. They should discover
-   each other.
+2. Set up a service account on a Google Cloud project and create a key for it.
+   **Do not lose or compromise this key**. They can be recreated/disabled but
+   always keep security in mind.
+3. Add two lines to `.env`:
+   ```dotenv
+   service_account=example@foo.iam.gserviceaccount.com
+   allowable_owner=johndoe@example.io
+   ```
+   The first email should match the service account name.
+
+   The second should be a regular account that will own the spreadsheet.
+4. Place the token in the same folder as `main.py`, name it `secrets.json` and
+   run `main.py` with the argument `--import-secrets`.
+5. Make sure you have an encrypted copy of the token on another device, and
+   destroy it. Never leave a plaintext copy on a device.
+6. Create a spreadsheet on the account listed in the `allowable_owner` field.
+   Its name should end with "\[attendance-bot\]" *exactly*. Avoid editing the 
+   top row. Share this sheet with the service account.
+7. Install the code client on a device on the same network. They should
+   discover each other automagically.
 
 ## Running
 The bot takes the following command-line parameter(s):
@@ -76,3 +90,9 @@ keyring before trying again.
 If the bot produces "unauthorized" or "forbidden" errors, check the tokens.
 Specifically, that they aren't expired and that the correct scopes are
 selected.
+
+If the bot raises a `ValueError` about how no valid sheet was found, make sure
+that there is a sheet that:
+* is shared with the designated service account;
+* is named with the appropriate suffix (no quotes or extra spaces); and
+* is editible/visible.
