@@ -5,6 +5,8 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import os
 
+import SheetsManager
+
 load_dotenv()
 
 intents = discord.Intents.default()
@@ -25,11 +27,10 @@ async def on_ready():
         synced = await bot.tree.sync(guild=guild)
         print(f"Cleared and synced {len(synced)} commands to {guild.id}")
 
-async def load_extensions(disable_attendance_features=False):
+async def load_extensions(disable_attendance=False):
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
-    await bot.load_extension("cogs.ServerStatus")
-    if not disable_attendance_features:
+    if not disable_attendance:
         await bot.load_extension("cogs.MarkHere")
     print("Extensions all loaded")
 
@@ -44,7 +45,16 @@ if __name__ == "__main__":
                 else:
                     print(f"Duplicate argument {arg}")
                     os._exit(2)
-            case _: # default
+            case "--import-secrets":
+                if disable_attendance_features:
+                    print(f"Cannot combine {arg} and --disable-attendance")
+                    os._exit(2)
+                # search for secrets and import them into the keyring
+                manager = SheetsManager.SheetManager()
+                manager.import_secrets()
+                print("Success! Make sure to never leave the keys in plaintext (keep an encrypted copy on another machine).")
+                sys.exit(0)
+            case _:  # default
                 print(f"Unrecognized argument {arg}")
 
     import asyncio

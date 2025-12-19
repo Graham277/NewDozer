@@ -1,14 +1,14 @@
 import ipaddress
 import logging
 import json
-import os
 import socket
-import sqlite3
 import sys
 import threading
 from enum import Enum
 
 from dotenv import load_dotenv
+
+from SheetsManager import SheetManager
 
 load_dotenv()
 
@@ -18,17 +18,24 @@ class Status(Enum):
     CONNECTED = 2
 class AttendanceCodeCommunicator:
 
-    db_connection = None
+    sheet_id = None
+    sheet_manager = None
     received_codes = {}
     claimed_codes = []
     status: Status = Status.DISCONNECTED
     thread: threading.Thread = None
 
-    def __init__(self, db_path):
-        if not os.path.isfile(db_path):
-            open(db_path, 'w').close()
-        self.db_connection = sqlite3.connect(db_path)
-        self.db_connection.execute("CREATE TABLE IF NOT EXISTS Attendance ( user VARCHAR(255), timestamp INTEGER );")
+    def __init__(self):
+        """
+        :raises ValueError: if no valid sheet exists
+        """
+        self.sheet_manager = SheetManager()
+        self.sheet_id = self.sheet_manager.find_sheet("[attendance-bot]")
+
+        if self.sheet_id is None:
+            raise ValueError('No valid sheet exists to store attendance codes. Either create one '
+                             'with the suffix "[attendance-bot]" (no quotes) or disable '
+                             'attendance features with the command-line switch.')
 
     def _discover(self, sock: socket.socket):
 

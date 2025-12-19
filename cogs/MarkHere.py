@@ -1,5 +1,4 @@
-import time
-from math import floor
+import datetime
 
 import discord
 from discord.ext import commands
@@ -15,7 +14,7 @@ class MarkHere(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.communicator = AttendanceCodeCommunicator("db.sqlite")
+        self.communicator = AttendanceCodeCommunicator()
         self.communicator.run() # starts background thread
 
     # Guild syncing
@@ -34,7 +33,7 @@ class MarkHere(commands.Cog):
 
     async def mark_here(self, interaction: discord.Interaction, code: int):
 
-        timestamp = floor(time.time())
+        timestamp = datetime.datetime.now(datetime.UTC)
         if code not in self.communicator.received_codes:
             await interaction.response.send_message(content=f"Code does not exist! Was it typed correctly?")
             return
@@ -43,14 +42,12 @@ class MarkHere(commands.Cog):
             await interaction.response.send_message(content=f"Code already claimed!")
             return
         # if code is no longer valid
-        if timestamp > self.communicator.received_codes[code]:
+        if timestamp.timestamp() > self.communicator.received_codes[code]:
             await interaction.response.send_message(content=f"Code is no longer valid!")
             return
 
         # so commit the record to memory
-        self.communicator.db_connection.execute("INSERT INTO Attendance (user, timestamp) VALUES (?, ?)", (interaction.user.name, timestamp))
-        self.communicator.db_connection.commit()
-        # TODO: clean up codes periodically to get rid of long-expired ones
+        self.communicator.sheet_manager.add_line(timestamp, interaction.user.name, interaction.user.display_name, self.communicator.sheet_id)
         self.communicator.claimed_codes.append(code)
         await interaction.response.send_message(content=f"Marked {interaction.user.name} as present (code: {code})")
 
