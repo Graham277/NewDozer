@@ -80,6 +80,10 @@ your own server without clogging up the production server.
 The bot takes the following command-line parameter(s):
 * `--disable-attendance`: disable all attendance features. The server will 
   not be started and the OAuth tokens will not be used/verified.
+* `--import-secrets`: Import the secrets from `secrets.json` into the keyring.
+  The program will immediately terminate after success/failure. **Always secure
+  the tokens**, do not leave an unsecured copy on the server (keep an encrypted
+  copy on a different host). Must not be specified with `--disable-attendance`.
 
 Launch `main.py` with `python3` to run the app.
 
