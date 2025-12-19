@@ -7,3 +7,4 @@ pycache
 **/__pycache__/
 .venv/
 secrets.json
+secrets.json.gpg
