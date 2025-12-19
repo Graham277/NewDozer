@@ -28,7 +28,7 @@ async def on_ready():
         synced = await bot.tree.sync(guild=guild)
         print(f"Cleared and synced {len(synced)} commands to {guild.id}")
 
-async def load_extensions(disable_attendance=False):
+async def load_extensions():
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
     if not disable_attendance:
