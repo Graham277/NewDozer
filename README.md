@@ -1,5 +1,3 @@
-### This is a forked version of the original at https://github.com/Graham277/NewDozer.
-
 # About
 A python rewrite of the original dozer-discord-bot.
 Much of this project is powered by the blue alliance at https://www.thebluealliance.com/
