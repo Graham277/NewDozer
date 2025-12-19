@@ -50,6 +50,15 @@ multi_word_key="extra long entry with spaces!"
 
 Make sure to remove trailing whitespace.
 
+If the `.env` file must be located in a different place (i.e. /run/secrets),
+set:
+
+```shell
+DOZER_DOTENV_PATH=/path/to/.env
+```
+
+before running the bot.
+
 Additionally, certain keys are so sensitive that they cannot be stored in
 plaintext. Instead they are stored in a keyring (Windows Credential Manager, 
 Gnome Secret Service or similar, or macOS's offering), where they are encrypted
@@ -134,8 +143,13 @@ To set it up:
    on the server.
 6. **Transfer the key** (in plaintext) to the server. Move it to the bot's
    project root and name it `secrets.json`.
-7. **Run `main.py`** with the argument `--import-secrets`.
-8. **Add the following lines** to `.env`:
+7. (Optional) **Add the following line** to `.env` if the secrets file has a
+   different path:
+   ```dotenv
+   secrets_json_path=/path/to/secrets-file.json
+   ```
+8. **Run `main.py`** with the argument `--import-secrets`.
+9. **Add the following lines** to `.env`:
    ```dotenv
    # service account just created
    service_account=example@foo.iam.gserviceaccount.com
@@ -143,10 +157,10 @@ To set it up:
    # service account
    allowable_owner=johndoe@example.test
    ```
-9. Using the `allowable_owner`'s associated Google account, **create a
-   spreadsheet**. Name it anything, but add the suffix "[attendance-bot]" to
-   the end. Avoid editing this sheet as the app stores metadata and state in
-   some parts.
+10. Using the `allowable_owner`'s associated Google account, **create a
+    spreadsheet**. Name it anything, but add the suffix "[attendance-bot]" to
+    the end. Avoid editing this sheet as the app stores metadata and state in
+    some parts.
 10. **Start up the server.**
 11. **Expose an attendance client on the same network**, using the associated
     Java package. The two should discover each other automagically.

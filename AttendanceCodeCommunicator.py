@@ -1,6 +1,7 @@
 import ipaddress
 import logging
 import json
+import os
 import socket
 import sys
 import threading
@@ -29,7 +30,10 @@ class AttendanceCodeCommunicator:
         """
         :raises ValueError: if no valid sheet exists
         """
-        self.sheet_manager = SheetManager()
+        secrets_location = os.getenv("secrets_json_path")
+        if not secrets_location:
+            secrets_location = "secrets.json"
+        self.sheet_manager = SheetManager(secrets_location)
         self.sheet_id = self.sheet_manager.find_sheet("[attendance-bot]")
 
         if self.sheet_id is None:

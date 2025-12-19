@@ -8,7 +8,13 @@ from dotenv import load_dotenv
 import SheetsManager
 
 # Secrets are stored in a dotenv, so we must load it before trying to access it
-load_dotenv()
+# Before running, see if there is an environment variable called
+# DOZER_DOTENV_PATH.
+# If so, load it from there.
+dotenv_path = os.getenv("DOZER_DOTENV_PATH")
+if not dotenv_path:
+    dotenv_path = None
+load_dotenv(dotenv_path=dotenv_path)
 
 # Set up the bot
 intents = discord.Intents.default()
