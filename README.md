@@ -5,7 +5,7 @@ A python rewrite of the original dozer-discord-bot.
 Much of this project is powered by the blue alliance at https://www.thebluealliance.com/
 
 This version of the bot also includes attendance features. This implementation
-uses a Google Sheets spreasheet for storage.
+uses a Google Sheets spreadsheet for storage.
 
 # Setting up
 ## Dependencies and environment
