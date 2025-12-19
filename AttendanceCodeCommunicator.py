@@ -98,7 +98,7 @@ class AttendanceCodeCommunicator:
                 }
                 sock.sendall(bytes(json.dumps(response), 'utf-8'))
                 logging.log(logging.WARN, f"Logged heartbeat error: expected {counter}, told {message['counter']}")
-                counter = message['counter']
+                counter = message['counter'] + 1
 
             elif message['type'] == 'code':
                 code = int(message['code'])
