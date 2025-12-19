@@ -11,6 +11,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
+disable_attendance = False
 
 @bot.event
 async def on_ready():
@@ -36,17 +37,16 @@ async def load_extensions(disable_attendance=False):
 
 if __name__ == "__main__":
     # parse command line
-    disable_attendance_features = False
     for arg in sys.argv[1:]:
         match arg:
             case "--disable-attendance":
-                if not disable_attendance_features:
-                    disable_attendance_features = True
+                if not disable_attendance:
+                    disable_attendance = True
                 else:
                     print(f"Duplicate argument {arg}")
                     os._exit(2)
             case "--import-secrets":
-                if disable_attendance_features:
+                if disable_attendance:
                     print(f"Cannot combine {arg} and --disable-attendance")
                     os._exit(2)
                 # search for secrets and import them into the keyring
