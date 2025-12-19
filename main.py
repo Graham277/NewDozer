@@ -1,8 +1,11 @@
 import os
+import sys
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+
+import SheetsManager
 
 # Secrets are stored in a dotenv, so we must load it before trying to access it
 load_dotenv()
@@ -10,6 +13,7 @@ load_dotenv()
 # Set up the bot
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
+disable_attendance = False
 
 # This is run when the bot is started by discord.py, it syncs the commands to the guilds specified
 @bot.event
@@ -35,11 +39,34 @@ async def load_extensions():
     await bot.load_extension("cogs.TeamData")
     await bot.load_extension("cogs.Status")
     await bot.load_extension("cogs.Watch")
+    if not disable_attendance:
+        await bot.load_extension("cogs.MarkHere")
     print("Extensions all loaded")
 
 
 # Loads slash commands, starts the bot
 if __name__ == "__main__":
+    # parse command line
+    for arg in sys.argv[1:]:
+        match arg:
+            case "--disable-attendance":
+                if not disable_attendance:
+                    disable_attendance = True
+                else:
+                    print(f"Duplicate argument {arg}")
+                    os._exit(2)
+            case "--import-secrets":
+                if disable_attendance:
+                    print(f"Cannot combine {arg} and --disable-attendance")
+                    os._exit(2)
+                # search for secrets and import them into the keyring
+                manager = SheetsManager.SheetManager()
+                manager.import_secrets()
+                print("Success! Make sure to never leave the keys in plaintext (keep an encrypted copy on another machine).")
+                sys.exit(0)
+            case _:  # default
+                print(f"Unrecognized argument {arg}")
+
     import asyncio
 
     asyncio.run(load_extensions())
