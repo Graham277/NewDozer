@@ -114,11 +114,15 @@ class AttendanceCodeCommunicator:
 
                 # check for expired codes
                 import datetime
-                for (code_to_check, timestamp) in self.received_codes:
-                    if datetime.datetime.now(datetime.UTC) > timestamp:
-                        self.received_codes.pop(code_to_check, None)
-                        if code_to_check in self.claimed_codes:
-                            self.claimed_codes.remove(code_to_check)
+                codes_to_remove = []
+                for code_to_check, expiry in self.received_codes.items():
+                    if datetime.datetime.now(datetime.UTC).timestamp() > expiry:
+                        codes_to_remove.append(code_to_check)
+
+                for code_to_remove in codes_to_remove:
+                    self.received_codes.pop(code_to_remove, None)
+                    if code_to_remove in self.claimed_codes:
+                        self.claimed_codes.remove(code_to_remove)
 
             else:
                 logging.log(logging.WARN, f"Unknown message {message['type']}, ignoring")
