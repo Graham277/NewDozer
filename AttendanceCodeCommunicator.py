@@ -123,7 +123,8 @@ class AttendanceCodeCommunicator:
                 import datetime
                 codes_to_remove = []
                 for code_to_check, expiry in self.received_codes.items():
-                    if datetime.datetime.now(datetime.UTC).timestamp() > expiry:
+                    # check if the code is 3m past expiry - give a chance to see the expired message
+                    if datetime.datetime.now(datetime.UTC).timestamp() > expiry + 180:
                         codes_to_remove.append(code_to_check)
 
                 for code_to_remove in codes_to_remove:
