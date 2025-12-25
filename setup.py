@@ -533,7 +533,92 @@ def main():
                          " required to run the bot with attendance features."
                          " Ensure one is installed before running the bot for"
                          " the first time.", wrap_width), sep='\n')
+    print()
     print("You will probably also need to manually import credentials.")
+    print("For that, run setup.py with the subcommand 'import'.")
+
+def setup_import():
+    print()
+    print(" === Dozer Setup ===")
+    print("Version 1.0.0")
+    print("Task: Import secrets")
+    print()
+
+    # import systemd secrets
+
+    print("Where is secrets.json located?")
+    print()
+    while True:
+        secrets_path = input("Enter a path: ")
+
+        if not os.path.exists(secrets_path):
+            print(f"Couldn't find secrets file at {secrets_path}, try again.")
+            print()
+            continue
+        if not os.path.isfile(secrets_path):
+            print(f"{secrets_path} path is not a file, try again.")
+            print()
+            continue
+
+        break
+
+    cred_locations = ["Into keyring", "Into the unit file (encrypted)", "Cancel"]
+    cred_location = cred_locations[choose_option("How should the"
+                                                 " credentials be imported?",
+                                                 *cred_locations, default=1)]
+
+    if cred_location == "Cancel":
+        print("Abort. --- ")
+        sys.exit(0)
+
+    is_systemd = False if cred_location == "Into keyring" else True
+    is_system = False # early assignment for the print
+
+    if is_systemd:
+        install_paths = ["/usr/local/share/dozerbot", "/opt/dozerbot", "~/.local/share/dozerbot"]
+        install_path = install_paths[choose_option("Where is the bot installed? ")]
+
+        is_system = not install_path.startswith("~")
+        unit_file_conf_path = os.path.expanduser("~/.config/systemd/user/dozer.service.d/")\
+            if not is_system else "/etc/systemd/system/dozer.service.d/"
+
+        print(f"Using {"system" if is_system else "user"} service's unit file")
+        print()
+        print("Where is the secrets file located?")
+        secrets_path = input("Enter a path: ")
+
+        # encrypt
+        print("The script will now ask for superuser (required for encryption).")
+        out = subprocess.check_call(["sudo", "systemd-creds", "encrypt", "-p",
+                        "--name=service_auth", secrets_path, "-"])
+
+        # write to conf
+        if not is_system:
+            # can use native functions
+            pathlib.Path(unit_file_conf_path).mkdir(parents=True, exist_ok=True)
+            with open(unit_file_conf_path + "10-creds.conf", "w") as f2:
+                f2.write(
+                    f"""
+                    [Service]
+                    {out}
+                    """)
+        else:
+            subprocess.run(["sudo", "mkdir", "-p", unit_file_conf_path])
+            with open("/tmp/10-creds.conf", "w") as f2:
+                f2.write(
+                    f"""
+                    [Service]
+                    {out}
+                    """)
+            subprocess.run(["sudo", "mv", "/tmp/10-creds.conf",
+                            unit_file_conf_path + "10-creds.conf"])
+
+    print()
+    if is_systemd:
+        print(f"Successfully imported secrets! Try systemctl"
+              f" {"--user" if not is_system else ""} restart dozer.service")
+    else:
+        print("Successfully imported secrets!")
 
 if __name__ == "__main__":
     main()
