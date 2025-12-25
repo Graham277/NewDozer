@@ -597,9 +597,6 @@ def setup_import():
             if not is_system else "/etc/systemd/system/dozer.service.d/"
 
         print(f"Using {"system" if is_system else "user"} service's unit file")
-        print()
-        print("Where is the secrets file located?")
-        secrets_path = input("Enter a path: ")
 
         # encrypt
         print("The script will now ask for superuser (required for encryption).")
