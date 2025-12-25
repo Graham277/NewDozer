@@ -226,6 +226,16 @@ def main():
         "Which directory should the bot be installed into?\n",
         *annotated_install_targets)
 
+    install_parent_target_abs = os.path.realpath(os.path.abspath(
+        os.path.expanduser(install_targets[option])
+    ))
+    bin_path_target_abs = os.path.realpath(os.path.abspath(
+        os.path.expanduser(bin_path_targets[option])
+    ))
+    etc_path_target_abs = os.path.realpath(os.path.abspath(
+        os.path.expanduser(etc_path_targets[option])
+    ))
+
     # check $PATH
     path = os.getenv("PATH")
     path_entries = path.split(os.pathsep)
@@ -234,16 +244,15 @@ def main():
     # this awful mess just gets the real path of a file
     # (i.e. no symlinks, tildes or relative components)
     # this loop checks if the selected directory is in PATH
-    target_test_dir = os.path.realpath(os.path.abspath(os.path.expanduser(bin_path_targets[option])))
     for entry in path_entries:
         entry_test_dir = os.path.realpath(os.path.abspath(os.path.expanduser(entry)))
-        if entry_test_dir == target_test_dir:
+        if entry_test_dir == bin_path_target_abs:
             has_found_current = True
             break
 
     # warn user if their installation dir is not in PATH
     if not has_found_current:
-        print(*textwrap.wrap("WARNING: Cannot find " + bin_path_targets[option] +
+        print(*textwrap.wrap("WARNING: Cannot find " + bin_path_target_abs +
               " in $PATH. This will not prevent installation, but may cause"
               " issues if running directly from the command line.",
                              wrap_width), sep='\n')
@@ -259,8 +268,8 @@ def main():
     print("Step 2 - installing files...")
     print()
 
-    install_dir = install_targets[option] + sep + subdir_name
-    needs_root = not is_subdir("~", install_targets[option])
+    install_dir = install_parent_target_abs + sep + subdir_name
+    needs_root = not is_subdir("~", install_parent_target_abs)
 
     if needs_root:
         print("The installer will now ask for superuser permissions.")
