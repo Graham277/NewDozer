@@ -189,6 +189,7 @@ def main():
     """
 
     subdir_name = "dozerbot"
+    wrap_width = 80
 
     print(" === Dozer Installer === ")
     print("Version 1.0.0")
@@ -206,9 +207,9 @@ def main():
 
     # check deps (virtualenv)
     if shutil.which("virtualenv") is None:
-        print("ERROR: no installed copy of virtualenv was found, which is"
+        print(*textwrap.wrap("ERROR: no installed copy of virtualenv was found, which is"
               " required for installation. Please check $PATH and install it if"
-              " necessary.")
+              " necessary.", wrap_width), sep='\n')
         print("Abort. ---")
         sys.exit(1)
 
@@ -241,11 +242,13 @@ def main():
 
     # warn user if their installation dir is not in PATH
     if not has_found_current:
-        print("WARNING: Cannot find " + bin_path_targets[option] +
+        print(*textwrap.wrap("WARNING: Cannot find " + bin_path_targets[option] +
               " in $PATH. This will not prevent installation, but may cause"
-              " issues if running directly from the command line.")
-        print("It is recommended to add the directory to PATH if you plan on"
-              "using it directly from the command line.")
+              " issues if running directly from the command line.",
+                             wrap_width), sep='\n')
+        print(*textwrap.wrap("It is recommended to add the directory to PATH if"
+                             " you plan on using it directly from the command"
+                             " line.", wrap_width), sep='\n')
 
     print()
     wait()
