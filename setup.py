@@ -590,7 +590,7 @@ def setup_import():
 
     if is_systemd:
         install_paths = ["/usr/local/share/dozerbot", "/opt/dozerbot", "~/.local/share/dozerbot"]
-        install_path = install_paths[choose_option("Where is the bot installed? ")]
+        install_path = install_paths[choose_option("Where is the bot installed? ", *install_paths)]
 
         is_system = not install_path.startswith("~")
         unit_file_conf_path = os.path.expanduser("~/.config/systemd/user/dozer.service.d/")\
