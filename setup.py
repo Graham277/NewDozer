@@ -14,6 +14,7 @@
 #     using user service.
 # Requires sudo privileges.
 import os
+import stat
 from os.path import sep
 import shutil
 import subprocess
