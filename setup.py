@@ -637,6 +637,7 @@ if __name__ == "__main__":
         case "install":
             setup_install()
             sys.exit(0)
+        # TODO: add uninstall command
         case "help":
             print(" === Dozer Setup === ")
             print("Version 1.0.0")
