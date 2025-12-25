@@ -264,10 +264,17 @@ def main():
             # make sure directories exist
             subprocess.run(["sudo", "mkdir", "-p", install_dir])
             subprocess.run(["sudo", "cp", "-r", ".", install_dir])
+            # and make sure anyone can execute
+            subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "main.py"])
+            subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "start.sh"])
         else:
             # but with 100% less sudo
             subprocess.run(["mkdir", "-p", install_dir])
             subprocess.run(["cp", ".", install_dir])
+            os.chmod(install_dir + sep + "main.py",
+                     os.stat(install_dir + sep + "main.py").st_mode | stat.S_IEXEC)
+            os.chmod(install_dir + sep + "start.sh",
+                     os.stat(install_dir + sep + "start.sh").st_mode | stat.S_IEXEC)
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to copy files! (exit code {e.returncode},"
               f" message: {str(e)})")
