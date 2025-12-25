@@ -202,8 +202,9 @@ def setup_install():
     subdir_name = "dozerbot"
     wrap_width = 80
 
-    print(" === Dozer Installer === ")
+    print(" === Dozer Setup === ")
     print("Version 1.0.0")
+    print("Task: Install")
     print()
     print("Step 1 - gathering information...")
     print()
