@@ -310,7 +310,7 @@ def setup_install():
         print(f"ERROR: Failed to copy files! (exit code {e.returncode},"
               f" message: {str(e)})")
         print("Abort. ---")
-        exit(1)
+        sys.exit(1)
 
     # symlink bin and etc directories
 
@@ -378,7 +378,7 @@ def setup_install():
         print(f"ERROR: Failed to create virtual environment! (exit code"
               f" {e.returncode}, message: {str(e)})")
         print("Abort. ---")
-        exit(1)
+        sys.exit(1)
     # done
 
     # get pip deps
@@ -402,7 +402,7 @@ def setup_install():
         print(f"ERROR: Failed to install dependencies! (exit code"
               f" {e.returncode}, message: {str(e)})")
         print("Abort. ---")
-        exit(1)
+        sys.exit(1)
 
     print()
     print("Step 5 - creating system service...")
