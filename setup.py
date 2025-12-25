@@ -398,6 +398,12 @@ def main():
     print("Step 5 - creating system service...")
     print()
 
+    log_options_annotated = ["Sink (/dev/null)", "To ~/.cache/dozer.log",
+                             "To /var/log/dozer.log", "To syslog"]
+    log_options = ["null", "cache", "varlog", "syslog", "default"]
+    log_option = log_options[choose_option("Where should log messages be sent?",
+                                           *log_options_annotated, default=3)]
+
     # create a systemd file
     if needs_root:
         print("Creating as a system-wide systemd unit")
@@ -406,6 +412,37 @@ def main():
         start_sh_path = install_dir + sep + "start.sh"
         service_tmp_path = "/tmp/dozer.service"
         service_file_path = "/lib/systemd/system/dozer.service"
+
+        log_data = ""
+        match log_option:
+            case "null":
+                log_data = """
+                StandardOutput=/dev/null
+                StandardError=/dev/null
+                """
+                print("WARNING: The `null` log output was selected. This can"
+                      "make troubleshooting much more difficult.")
+                print()
+            case "cache":
+                log_data = f"""
+                StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
+                StandardError={os.path.expanduser("~/.cache/dozer.log")}
+                """
+                print("Note: It is recommended to set up a log rotation service"
+                      " (like logrotate) to avoid having the log grow"
+                      " uncontrollably.")
+                print()
+            case "varlog":
+                log_data = f"""
+                StandardOutput=/var/log/dozer.log
+                StandardError=/var/log/dozer.log
+                """
+                print("Note: It is recommended to set up a log rotation service"
+                      " (like logrotate) to avoid having the log grow"
+                      " uncontrollably.")
+                print()
+            case "syslog":
+                pass # default, no action needed
 
         # taken from nodejs version
         service_file_contents = f"""
@@ -418,6 +455,7 @@ def main():
         ExecStart={start_sh_path}
         Restart=always
         RestartSec=3
+        {log_data}
         
         [Install]
         WantedBy=multi-user.target
@@ -448,6 +486,7 @@ def main():
         ExecStart={start_sh_path}
         Restart=always
         RestartSec=3
+        StandardOutput=/var/log/systemd/system/dozer.service
         
         [Install]
         WantedBy=default.target
