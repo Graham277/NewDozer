@@ -256,7 +256,7 @@ def main():
     needs_root = not is_subdir("~", install_targets[option])
 
     if needs_root:
-        print("The script will now ask for superuser permissions.")
+        print("The installer will now ask for superuser permissions.")
 
     # copy files
     try:
