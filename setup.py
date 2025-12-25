@@ -213,7 +213,7 @@ def main():
         sys.exit(1)
 
     # get the install directory
-    install_targets = ["/usr/local/share", "/opt", "~/.local"]
+    install_targets = ["/usr/local/share", "/opt", "~/.local/share"]
     bin_path_targets = ["/usr/local/bin", "/opt", "~/.local/bin"]
     etc_path_targets = ["/usr/local/etc", "/opt", "~/.local/etc"]
     annotated_install_targets = [
