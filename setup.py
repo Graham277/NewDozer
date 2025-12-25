@@ -300,6 +300,48 @@ def main():
               f" message: {str(e)})")
         print("Abort. ---")
         exit(1)
+
+    # symlink bin and etc directories
+
+    if install_parent_target_abs != bin_path_target_abs:
+        print("Linking installation...")
+
+        # make links
+        # each link points from the base directory to the appropriate folder
+        # (just as an alias)
+        #
+        # secrets.json is specifically excluded because it shouldn't exist most
+        # of the time
+        # .env can also point somewhere else if required
+        if needs_root:
+            # bin
+            subprocess.run(["sudo", "-E", "ln", "-s",
+                            install_dir + sep + "main.py",
+                            bin_path_target_abs + sep + "dozermain"])
+            subprocess.run(["sudo", "-E", "ln", "-s",
+                            install_dir + sep + "start.sh",
+                            bin_path_target_abs + sep + "dozerstart"])
+            # etc
+            subprocess.run(["sudo", "-E", "ln", "-s",
+                            install_dir + sep + ".env",
+                            etc_path_target_abs + sep + "dozer.env"])
+        else:
+            # bin
+            os.symlink(install_dir + sep + "main.py",
+                       bin_path_target_abs + sep + "dozermain")
+            os.symlink(install_dir + sep + "start.sh",
+                       bin_path_target_abs + sep + "dozerstart")
+            # etc
+            os.symlink(install_dir + sep + ".env",
+                       etc_path_target_abs + sep + "dozer.env")
+        print(*textwrap.wrap(
+            f"Success! Executables and configuration may be also found at "
+            f"{bin_path_target_abs + sep + "dozermain"} (for main.py), "
+            f"{bin_path_target_abs + sep + "dozerstart"} (for start.sh), and "
+            f"{(etc_path_target_abs + sep + "dozer.env")} (for .env).",
+            wrap_width), sep='\n')
+        print()
+
     # done
 
     # make venv
@@ -345,7 +387,6 @@ def main():
         print("Abort. ---")
         exit(1)
 
-    # TODO: symlink [.]local/bin, etc
     # TODO: make systemd files/log config
 
 if __name__ == "__main__":
