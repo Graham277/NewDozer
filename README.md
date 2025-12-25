@@ -161,8 +161,8 @@ To set it up:
     spreadsheet**. Name it anything, but add the suffix "[attendance-bot]" to
     the end. Avoid editing this sheet as the app stores metadata and state in
     some parts.
-10. **Start up the server.**
-11. **Expose an attendance client on the same network**, using the associated
+11. **Start up the server.**
+12. **Expose an attendance client on the same network**, using the associated
     Java package. The two should discover each other automagically.
 
 # Running
