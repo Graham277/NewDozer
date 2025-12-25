@@ -500,7 +500,14 @@ def main():
 
         print("Success! Try systemctl --user start dozer.service")
 
+    print()
     print("Successfully installed Dozer bot.")
+    print()
+    print(*textwrap.wrap("Note: A keyring (a DBus Secret Service provider) is"
+                         " required to run the bot with attendance features."
+                         " Ensure one is installed before running the bot for"
+                         " the first time.", wrap_width), sep='\n')
+    print("You will probably also need to manually import credentials.")
 
 if __name__ == "__main__":
     main()
