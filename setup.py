@@ -299,7 +299,7 @@ def setup_install():
         else:
             # but with 100% less sudo
             subprocess.run(["mkdir", "-p", install_dir])
-            subprocess.run(["cp", ".", install_dir])
+            subprocess.run(["cp", "-r", ".", install_dir])
             os.chmod(install_dir + sep + "main.py",
                      os.stat(install_dir + sep + "main.py").st_mode | stat.S_IEXEC)
             os.chmod(install_dir + sep + "start.sh",
