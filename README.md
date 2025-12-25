@@ -6,6 +6,29 @@ This version of the bot also includes attendance features. This implementation
 uses a Google Sheets spreadsheet for storage.
 
 # Setting up
+
+## Installation
+The project comes with an installer script, `setup.py`. After cloning the
+repository, one can simply:
+```shell
+python3 setup.py install
+```
+and quickly install the project, with a guided flow.
+
+The script is intended to be run on `systemd`-based Linux distributions.
+
+It supports multiple installation targets, but the defaults should work best
+for most applications. It will take care of generating a virtualenv environment,
+dependencies and creating a systemd service.
+
+After installing, one can also:
+```shell
+python3 setup.py import
+```
+to import Google API keys. This also bypasses the need for a keyring.
+
+If using the setup script, skip **§ Dependencies and environment**.
+
 ## Dependencies and environment
 The project requires multiple dependencies, including:
 * `discord`
@@ -64,6 +87,9 @@ plaintext. Instead they are stored in a keyring (Windows Credential Manager,
 Gnome Secret Service or similar, or macOS's offering), where they are encrypted
 at rest.
 
+> *Note that this only applies if `systemd-creds` (from the setup script) is not
+> used.*
+
 A keyring must be installed and unlocked for this app to function. If
 * you are using **macOS or Windows**: you already have a keyring
 * you are running a **mainstream desktop flavour of Linux**: you probably have
@@ -75,6 +101,11 @@ A keyring must be installed and unlocked for this app to function. If
   ```
   and see if it exists. The agent must implement the Secret Service, thus
   GNOME keyring or KDE wallet should work for most situations.
+
+If you are running a version of Linux and using the installer script to run the
+app, you can also store the secrets using `systemd-creds`. Run the installer 
+with the subcommand `import` – it will add the encrypted credentials directly
+into the `systemd` service file. In this case, no further action is needed.
 
 ## Discord tokens
 
@@ -141,14 +172,24 @@ To set it up:
 5. **Download this key** to a safe place on a trusted client. **Do not compromise
    this key**. Always keep an encrypted copy on hand - not plaintext, and not
    on the server.
+
+***
+
+**If using a plain install (no setup.py)**:
+
 6. **Transfer the key** (in plaintext) to the server. Move it to the bot's
    project root and name it `secrets.json`.
-7. (Optional) **Add the following line** to `.env` if the secrets file has a
+   
+   (Optional) **Add the following line** to `.env` if the secrets file has a
    different path:
    ```dotenv
    secrets_json_path=/path/to/secrets-file.json
    ```
-8. **Run `main.py`** with the argument `--import-secrets`.
+7. **Run `main.py`** with the argument `--import-secrets`.
+8. **Securely delete** the plaintext key, as it is no longer needed:
+   ```shell
+   shred -u /path/to/secrets.json
+   ```
 9. **Add the following lines** to `.env`:
    ```dotenv
    # service account just created
@@ -157,6 +198,20 @@ To set it up:
    # service account
    allowable_owner=johndoe@example.test
    ```
+
+**If using setup.py and systemd-creds**:
+
+6. **Transfer the key** (in plaintext) to the server. Move it somewhere
+   convenient, like `/home/user/secrets.json`
+7. **Run setup.py** with the subcommand `import`. Choose `systemd-creds`.
+8. **Restart the dozer service**.
+9. **Securely delete** the plaintext key, as it is no longer needed:
+   ```shell
+   shred -u /path/to/secrets.json
+   ```
+
+***
+
 10. Using the `allowable_owner`'s associated Google account, **create a
     spreadsheet**. Name it anything, but add the suffix "[attendance-bot]" to
     the end. Avoid editing this sheet as the app stores metadata and state in
