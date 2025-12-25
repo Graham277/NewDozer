@@ -387,7 +387,74 @@ def main():
         print("Abort. ---")
         exit(1)
 
-    # TODO: make systemd files/log config
+    print()
+    print("Step 5 - creating system service...")
+    print()
+
+    # create a systemd file
+    if needs_root:
+        print("Creating as a system-wide systemd unit")
+        print("...")
+        # create a new unit file
+        start_sh_path = install_dir + sep + "start.sh"
+        service_tmp_path = "/tmp/dozer.service"
+        service_file_path = "/lib/systemd/system/dozer.service"
+
+        # taken from nodejs version
+        service_file_contents = f"""
+        [Unit]
+        Description=Dozer discord bot
+        After=network.target
+        
+        [Service]
+        WorkingDirectory={install_dir}
+        ExecStart={start_sh_path}
+        Restart=always
+        RestartSec=3
+        
+        [Install]
+        WantedBy=multi-user.target
+        """
+
+        # cat into a temp file then move with sudo
+        with open(service_tmp_path, "w") as f:
+            f.write(service_file_contents)
+        subprocess.run(["sudo", "mv", service_tmp_path, service_file_path])
+        print("Enabling...")
+        subprocess.run(["sudo", "systemctl", "enable", "dozer.service"])
+
+        print("Success! Try systemctl start dozer.service")
+    else:
+        print("Creating as a user systemd unit")
+        print("...")
+        start_sh_path = install_dir + sep + "start.sh"
+        service_tmp_path = "/tmp/dozer.service"
+        service_file_path = os.path.expanduser("~/.config/systemd/user/dozer.service")
+
+        service_file_contents = f"""
+        [Unit]
+        Description=Dozer discord bot
+        After=network.target
+        
+        [Service]
+        WorkingDirectory={install_dir}
+        ExecStart={start_sh_path}
+        Restart=always
+        RestartSec=3
+        
+        [Install]
+        WantedBy=default.target
+        """
+
+        with open(service_tmp_path, "w") as f:
+            f.write(service_file_contents)
+        subprocess.run(["mv", service_tmp_path, service_file_path])
+        print("Enabling...")
+        subprocess.run(["systemctl", "enable", "--user", "dozer.service"])
+
+        print("Success! Try systemctl --user start dozer.service")
+
+    print("Successfully installed Dozer bot.")
 
 if __name__ == "__main__":
     main()
