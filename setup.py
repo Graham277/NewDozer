@@ -14,6 +14,7 @@
 #     using user service.
 # Requires sudo privileges.
 import os
+import pathlib
 import stat
 from os.path import sep
 import shutil
@@ -314,6 +315,9 @@ def main():
         # of the time
         # .env can also point somewhere else if required
         if needs_root:
+            # make sure symlinking directories exist
+            subprocess.run(["sudo", "mkdir", "-p", bin_path_target_abs])
+            subprocess.run(["sudo", "mkdir", "-p", etc_path_target_abs])
             # bin
             subprocess.run(["sudo", "-E", "ln", "-s",
                             install_dir + sep + "main.py",
@@ -326,6 +330,9 @@ def main():
                             install_dir + sep + ".env",
                             etc_path_target_abs + sep + "dozer.env"])
         else:
+            # same
+            pathlib.Path(bin_path_target_abs).mkdir(parents=True)
+            pathlib.Path(etc_path_target_abs).mkdir(parents=True)
             # bin
             os.symlink(install_dir + sep + "main.py",
                        bin_path_target_abs + sep + "dozermain")
