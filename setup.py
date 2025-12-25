@@ -252,6 +252,7 @@ def main():
 
     # warn user if their installation dir is not in PATH
     if not has_found_current:
+        print()
         print(*textwrap.wrap("WARNING: Cannot find " + bin_path_target_abs +
               " in $PATH. This will not prevent installation, but may cause"
               " issues if running directly from the command line.",
@@ -270,6 +271,7 @@ def main():
 
     install_dir = install_parent_target_abs + sep + subdir_name
     needs_root = not is_subdir("~", install_parent_target_abs)
+    print("Starting copy...")
 
     if needs_root:
         print("The installer will now ask for superuser permissions.")
@@ -291,6 +293,8 @@ def main():
                      os.stat(install_dir + sep + "main.py").st_mode | stat.S_IEXEC)
             os.chmod(install_dir + sep + "start.sh",
                      os.stat(install_dir + sep + "start.sh").st_mode | stat.S_IEXEC)
+        print("Success!")
+        print()
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to copy files! (exit code {e.returncode},"
               f" message: {str(e)})")
@@ -305,7 +309,11 @@ def main():
 
     venv_folder = install_dir + sep + ".venv"
     try:
+        print("Creating...")
+        print()
         subprocess.run(["sudo", "-E", "virtualenv", venv_folder])
+        print("Success!")
+        print()
         # cannot source it so it has to be explicitly called every time
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to create virtual environment! (exit code"
@@ -320,6 +328,7 @@ def main():
     print()
 
     try:
+        print("Installing dependencies from requirements.txt...")
         print()
         print(" -------- pip output begins -------- ")
         print()
@@ -327,6 +336,8 @@ def main():
                         "install", "-r", install_dir + sep + "requirements.txt"])
         print()
         print(" --------  pip output ends  -------- ")
+        print()
+        print("Success!")
         print()
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to install dependencies! (exit code"
