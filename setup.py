@@ -243,6 +243,8 @@ def main():
         print("WARNING: Cannot find " + bin_path_targets[option] +
               " in $PATH. This will not prevent installation, but may cause"
               " issues if running directly from the command line.")
+        print("It is recommended to add the directory to PATH if you plan on"
+              "using it directly from the command line.")
 
     print()
     wait()
