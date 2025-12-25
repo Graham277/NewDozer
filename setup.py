@@ -184,7 +184,16 @@ def is_subdir(parent: str | os.PathLike, child: str | os.PathLike) -> bool:
     child_real = os.path.realpath(os.path.abspath(os.path.expanduser(child)))
     return parent_real == os.path.commonpath([parent_real, child_real])
 
-def main():
+def setup_help():
+    print()
+    print("Usage: python setup.py <command>")
+    print()
+    print("Available commands:")
+    print(" - install: install the bot (guided)")
+    print(" - import: import credentials from a secrets file (guided)")
+    print(" - help: show this help")
+
+def setup_install():
     """
     Main routine that handles all functions.
     :return: nothing
