@@ -36,6 +36,9 @@ def choose_option(message: str, *options: str, default: int | None = None) -> in
     :return: the index of the option that was chosen
     """
 
+    if options is None or len(options) == 0:
+        raise ValueError("choose_option needs a list of options. This is a bug.")
+
     wrap_col = 80
 
     # regularize to non-None int
