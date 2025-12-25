@@ -296,6 +296,8 @@ def setup_install():
             # and make sure anyone can execute
             subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "main.py"])
             subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "start.sh"])
+            # make sure .env exists
+            subprocess.run(["sudo", "touch", install_dir + sep + ".env"])
         else:
             # but with 100% less sudo
             subprocess.run(["mkdir", "-p", install_dir])
@@ -304,6 +306,8 @@ def setup_install():
                      os.stat(install_dir + sep + "main.py").st_mode | stat.S_IEXEC)
             os.chmod(install_dir + sep + "start.sh",
                      os.stat(install_dir + sep + "start.sh").st_mode | stat.S_IEXEC)
+            # make sure .env exists
+            pathlib.Path(install_dir + sep + ".env").touch(exist_ok=True)
         print("Success!")
         print()
     except subprocess.CalledProcessError as e:
