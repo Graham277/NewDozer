@@ -592,12 +592,26 @@ def setup_import():
     is_system = False # early assignment for the print
 
     if is_systemd:
-        install_paths = ["/usr/local/share/dozerbot", "/opt/dozerbot", "~/.local/share/dozerbot"]
-        install_path = install_paths[choose_option("Where is the bot installed? ", *install_paths)]
+        while True:
+            install_paths = ["/usr/local/share/dozerbot", "/opt/dozerbot", "~/.local/share/dozerbot"]
+            install_path = install_paths[choose_option("Where is the bot installed? ", *install_paths)]
+
+            if not os.path.exists(install_path):
+                print(f"{install_path} does not exist, try again.")
+                continue
+
+            break
 
         is_system = not install_path.startswith("~")
         unit_file_conf_path = os.path.expanduser("~/.config/systemd/user/dozer.service.d/")\
             if not is_system else "/etc/systemd/system/dozer.service.d/"
+        unit_file_path = os.path.expanduser("~/.config/systemd/user/dozer.service")\
+            if not is_system else "/etc/systemd/system/dozer.service"
+
+        if not os.path.exists(unit_file_path):
+            print(f"ERROR: {unit_file_path} does not exist.")
+            print("Abort. --- ")
+            sys.exit(1)
 
         print(f"Using {"system" if is_system else "user"} service's unit file")
 
