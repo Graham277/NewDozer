@@ -220,7 +220,7 @@ def main():
     annotated_install_targets = [
         "Into /usr/local/share, linked into /usr/local/bin and etc",
         "Into /opt, in its own subdirectory",
-        "Into ~/.local/share, linked into ~/.local/bin",]
+        "Into ~/.local/share, linked into ~/.local/bin and etc",]
     option = choose_option(
         "Which directory should the bot be installed into?\n",
         *annotated_install_targets)
