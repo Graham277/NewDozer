@@ -215,6 +215,7 @@ def main():
     # get the install directory
     install_targets = ["/usr/local/share", "/opt", "~/.local"]
     bin_path_targets = ["/usr/local/bin", "/opt", "~/.local/bin"]
+    etc_path_targets = ["/usr/local/etc", "/opt", "~/.local/etc"]
     annotated_install_targets = [
         "Into /usr/local/share, linked into /usr/local/bin and etc",
         "Into /opt, in its own subdirectory",
