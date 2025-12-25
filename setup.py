@@ -621,4 +621,28 @@ def setup_import():
         print("Successfully imported secrets!")
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        print("Missing subcommand.")
+        setup_help()
+        sys.exit(1)
+    if len(sys.argv) > 2:
+        print("Too many arguments.")
+        setup_help()
+        sys.exit(1)
+
+    match sys.argv[1]:
+        case "import":
+            setup_import()
+            sys.exit(0)
+        case "install":
+            setup_install()
+            sys.exit(0)
+        case "help":
+            print(" === Dozer Setup === ")
+            print("Version 1.0.0")
+            print("Task: Help")
+            setup_help()
+        case _:
+            print("Unknown command.")
+            setup_help()
+            sys.exit(1)
