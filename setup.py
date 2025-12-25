@@ -334,13 +334,13 @@ def main():
             # etc
             os.symlink(install_dir + sep + ".env",
                        etc_path_target_abs + sep + "dozer.env")
+        print()
         print(*textwrap.wrap(
             f"Success! Executables and configuration may be also found at "
             f"{bin_path_target_abs + sep + "dozermain"} (for main.py), "
             f"{bin_path_target_abs + sep + "dozerstart"} (for start.sh), and "
             f"{(etc_path_target_abs + sep + "dozer.env")} (for .env).",
             wrap_width), sep='\n')
-        print()
 
     # done
 
@@ -354,8 +354,8 @@ def main():
         print("Creating...")
         print()
         subprocess.run(["sudo", "-E", "virtualenv", venv_folder])
-        print("Success!")
         print()
+        print("Success!")
         # cannot source it so it has to be explicitly called every time
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to create virtual environment! (exit code"
