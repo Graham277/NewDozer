@@ -320,8 +320,14 @@ def main():
     print()
 
     try:
+        print()
+        print(" -------- pip output begins -------- ")
+        print()
         subprocess.run(["sudo", "-E", venv_folder + sep + "bin" + sep + "pip",
                         "install", "-r", install_dir + sep + "requirements.txt"])
+        print()
+        print(" --------  pip output ends  -------- ")
+        print()
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to install dependencies! (exit code"
               f" {e.returncode}, message: {str(e)})")
