@@ -51,8 +51,16 @@ class SheetManager:
         `static_token`.
         :return:
         """
-        raw_data = keyring.get_keyring().get_credential("dozer_service_secrets", "service_auth").password
-        self.static_token = service_account.Credentials.from_service_account_info(json.loads(raw_data), scopes=self.CONST_SCOPES)
+        try:
+            raw_data = keyring.get_keyring().get_credential("dozer_service_secrets", "service_auth").password
+            self.static_token = service_account.Credentials.from_service_account_info(json.loads(raw_data), scopes=self.CONST_SCOPES)
+        except keyring.errors.InitError as e:
+            # use systemd-creds
+            creds_folder = os.getenv("CREDENTIALS_DIRECTORY")
+            if creds_folder is None:
+                raise e
+            raw_data = open(creds_folder + os.path.sep + "service_auth").read()
+            self.static_token = service_account.Credentials.from_service_account_info(json.loads(raw_data), scopes=self.CONST_SCOPES)
 
     def _lock_token(self, data: str):
         """
