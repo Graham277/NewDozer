@@ -192,9 +192,9 @@ def setup_help():
     print("Usage: python setup.py <command>")
     print()
     print("Available commands:")
-    print(" - install: install the bot (guided)")
-    print(" - uninstall: uninstall the bot (guided)")
-    print(" - import: import credentials from a secrets file (guided)")
+    print(" - install: install the bot")
+    print(" - uninstall: uninstall the bot")
+    print(" - import: import credentials from a secrets file")
     print(" - help: show this help")
 
 def setup_install():
