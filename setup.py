@@ -443,7 +443,7 @@ StandardOutput=/dev/null
 StandardError=/dev/null
 """
                 print("WARNING: The `null` log output was selected. This can"
-                      "make troubleshooting much more difficult.")
+                      " make troubleshooting much more difficult.")
                 print()
             case "cache":
                 log_data = \
