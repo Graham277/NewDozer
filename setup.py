@@ -740,7 +740,7 @@ def setup_uninstall():
         is_user = is_subdir(os.path.expanduser("~"), location)
 
         # find extra details
-        index = locations.index(location)
+        index = possible_locations.index(location)
         files_to_unlink: list[str] = unlink_locations[index]
         unit = unit_locations[index]
 
