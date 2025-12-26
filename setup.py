@@ -125,7 +125,7 @@ def choose_option(message: str, *options: str, default: int | None = None) -> in
 
     assert False, "Unreachable state"
 
-def confirm(message: str, default_state: bool | None) -> bool:
+def confirm(message: str, *, default_state: bool | None = None) -> bool:
     """
     Presents the user with a confirmation message, which they can respond to in
     various ways.
