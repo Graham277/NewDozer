@@ -239,7 +239,7 @@ def setup_install():
         "Into ~/.local/share, linked into ~/.local/bin and etc",]
     option = choose_option(
         "Which directory should the bot be installed into?\n",
-        *annotated_install_targets)
+        *annotated_install_targets, default=1) # default is /opt
 
     install_parent_target_abs = os.path.realpath(os.path.abspath(
         os.path.expanduser(install_targets[option])
