@@ -68,10 +68,26 @@ if __name__ == "__main__":
                 # search for secrets and import them into the keyring
                 manager = SheetsManager.SheetManager()
                 manager.import_secrets()
-                print("Success! Make sure to never leave the keys in plaintext (keep an encrypted copy on another machine).")
+                print("Success! Make sure to never leave the keys in plaintext"
+                      " (keep an encrypted copy on another machine).")
                 sys.exit(0)
             case _:  # default
                 print(f"Unrecognized argument {arg}")
+
+    # quickly check dotenv entries
+    if not os.getenv("token"):
+        print("No Discord token provided. Make sure .env is completely filled in.")
+        sys.exit(1)
+    if not os.getenv("guild_id") and not os.getenv("dev_guild_id"):
+        print("No guild ID provided. Make sure .env is completely filled in.")
+        sys.exit(1)
+    if not disable_attendance:
+        if not os.getenv("allowable_owner"):
+            print("No allowable owner provided. Make sure .env is completely filled in.")
+            sys.exit(1)
+        if not os.getenv("service_account"):
+            print("No GCP service account provided. Make sure .env is completely filled in.")
+            sys.exit(1)
 
     import asyncio
 
