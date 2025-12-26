@@ -285,33 +285,21 @@ def setup_install():
     print()
 
     install_dir = install_parent_target_abs + sep + subdir_name
-    needs_root = not is_subdir("~", install_parent_target_abs)
     print("Starting copy...")
 
-    if needs_root:
-        print("The installer will now ask for superuser permissions.")
+    print("The installer will now ask for superuser permissions.")
 
     # copy files
     try:
-        if needs_root:
-            # make sure directories exist
-            subprocess.run(["sudo", "mkdir", "-p", install_dir])
-            subprocess.run(["sudo", "cp", "-r", ".", install_dir])
-            # and make sure anyone can execute
-            subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "main.py"])
-            subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "start.sh"])
-            # make sure .env exists
-            subprocess.run(["sudo", "touch", install_dir + sep + ".env"])
-        else:
-            # but with 100% less sudo
-            subprocess.run(["mkdir", "-p", install_dir])
-            subprocess.run(["cp", "-r", ".", install_dir])
-            os.chmod(install_dir + sep + "main.py",
-                     os.stat(install_dir + sep + "main.py").st_mode | stat.S_IEXEC)
-            os.chmod(install_dir + sep + "start.sh",
-                     os.stat(install_dir + sep + "start.sh").st_mode | stat.S_IEXEC)
-            # make sure .env exists
-            pathlib.Path(install_dir + sep + ".env").touch(exist_ok=True)
+        # make sure directories exist
+        subprocess.run(["sudo", "mkdir", "-p", install_dir])
+        subprocess.run(["sudo", "cp", "-r", ".", install_dir])
+        # and make sure anyone can execute
+        subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "main.py"])
+        subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "start.sh"])
+        # make sure .env exists
+        subprocess.run(["sudo", "touch", install_dir + sep + ".env"])
+
         print("Success!")
         print()
     except subprocess.CalledProcessError as e:
@@ -332,33 +320,21 @@ def setup_install():
         # secrets.json is specifically excluded because it shouldn't exist most
         # of the time
         # .env can also point somewhere else if required
-        if needs_root:
-            # make sure symlinking directories exist
-            subprocess.run(["sudo", "mkdir", "-p", bin_path_target_abs])
-            subprocess.run(["sudo", "mkdir", "-p", etc_path_target_abs])
-            # bin
-            subprocess.run(["sudo", "-E", "ln", "-s",
-                            install_dir + sep + "main.py",
-                            bin_path_target_abs + sep + "dozermain"])
-            subprocess.run(["sudo", "-E", "ln", "-s",
-                            install_dir + sep + "start.sh",
-                            bin_path_target_abs + sep + "dozerstart"])
-            # etc
-            subprocess.run(["sudo", "-E", "ln", "-s",
-                            install_dir + sep + ".env",
-                            etc_path_target_abs + sep + "dozer.env"])
-        else:
-            # same
-            pathlib.Path(bin_path_target_abs).mkdir(parents=True)
-            pathlib.Path(etc_path_target_abs).mkdir(parents=True)
-            # bin
-            os.symlink(install_dir + sep + "main.py",
-                       bin_path_target_abs + sep + "dozermain")
-            os.symlink(install_dir + sep + "start.sh",
-                       bin_path_target_abs + sep + "dozerstart")
-            # etc
-            os.symlink(install_dir + sep + ".env",
-                       etc_path_target_abs + sep + "dozer.env")
+        # make sure symlinking directories exist
+        subprocess.run(["sudo", "mkdir", "-p", bin_path_target_abs])
+        subprocess.run(["sudo", "mkdir", "-p", etc_path_target_abs])
+
+        # bin
+        subprocess.run(["sudo", "-E", "ln", "-s",
+                        install_dir + sep + "main.py",
+                        bin_path_target_abs + sep + "dozermain"])
+        subprocess.run(["sudo", "-E", "ln", "-s",
+                        install_dir + sep + "start.sh",
+                        bin_path_target_abs + sep + "dozerstart"])
+        # etc
+        subprocess.run(["sudo", "-E", "ln", "-s",
+                        install_dir + sep + ".env",
+                        etc_path_target_abs + sep + "dozer.env"])
         print()
         print(*textwrap.wrap(
             f"Success! Executables and configuration may be also found at "
@@ -416,18 +392,20 @@ def setup_install():
     print("Step 5 - creating system service...")
     print()
 
+    is_system = not is_subdir(os.path.expanduser("~"), install_dir)
     log_options_annotated = ["Sink (/dev/null)", "To ~/.cache/dozer.log",
                              "To /var/log/dozer.log", "To syslog"]
-    if not needs_root:
+    if not is_system:
         log_options_annotated.remove("To /var/log/dozer.log")
     log_options = ["null", "cache", "varlog", "syslog"]
-    if not needs_root:
+    if not is_system:
         log_options.remove("varlog")
     log_option = log_options[choose_option("Where should log messages be sent?",
-                                           *log_options_annotated, default=3)]
+                                           *log_options_annotated,
+                                           default=3 if is_system else 2)]
 
     # create a systemd file
-    if needs_root:
+    if is_system:
         print("Creating as a system-wide systemd unit")
         print("...")
         # create a new unit file
