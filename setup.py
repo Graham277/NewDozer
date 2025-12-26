@@ -624,7 +624,7 @@ def setup_import():
         # encrypt
         print("The script will now ask for superuser (required for encryption).")
         out = subprocess.check_output(["sudo", "systemd-creds", "encrypt", "-p",
-                        "--name=service_auth", secrets_path, "-"])
+                        "--name=service_auth", secrets_path, "-"], text=True)
 
         # write to conf
         if not is_system:
