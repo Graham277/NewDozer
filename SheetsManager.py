@@ -82,8 +82,6 @@ class SheetManager:
         results = drive_service.files().list(fields="nextPageToken, files(id, name, mimeType, owners)").execute()
         files = results.get("files", [])
 
-
-
         for file in files:
             owners = []
             for owner in file['owners']:
