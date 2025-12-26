@@ -774,6 +774,49 @@ def setup_uninstall():
                 if os.path.exists(unit + ".d"):
                     shutil.rmtree(unit + ".d")
                     print("Removed systemd unit config at " + unit + ".d")
+        else:
+            # stop target
+            found_unit = os.path.exists(unit)
+            if found_unit:
+                subprocess.run(["sudo", "systemctl", "stop", "dozer.service"])
+                subprocess.run(["sudo", "systemctl", "disable", "dozer.service"])
+                print("Stopped and disabled service")
+
+            # reconfirm
+            print("Found the following targets with appropriate actions:")
+            print(f" * directory {location}: remove tree")
+            for target in files_to_unlink:
+                print(f" * symlink {target}: unlink")
+            if found_unit:
+                print(f" * systemd unit file {unit}: delete")
+                if os.path.exists(unit + ".d"):
+                    print(f" * systemd unit config {unit + ".d"}: remove tree")
+            print("(remove tree = delete all subdirectories, and then the"
+                  " directory itself)")
+            print()
+
+            confirm_option = confirm("Do you want to continue")
+
+            if not confirm_option:
+                print("Abort. --- ")
+                continue
+
+            # unlink
+            for target in files_to_unlink:
+                subprocess.run(["sudo", "unlink", target])
+                print("Unlinked " + target)
+
+            # remove tree (main)
+            subprocess.run(["sudo", "rm", "-rf", location])
+            print("Removed main installation files at " + location)
+
+            # delete unit
+            if found_unit:
+                subprocess.run(["sudo", "rm", "-f", unit])
+                print("Removed systemd unit file at " + unit)
+                if os.path.exists(unit + ".d"):
+                    subprocess.run(["sudo", "rm", "-rf", unit + ".d"])
+                    print("Removed systemd unit config at " + unit + ".d")
 
 
 if __name__ == "__main__":
