@@ -477,7 +477,7 @@ After=network.target
 WorkingDirectory={install_dir}
 ExecStart={start_sh_path}
 Restart=always
-RestartSec=3
+RestartSec=10
 {log_data}
 
 [Install]
@@ -533,7 +533,7 @@ After=network.target
 WorkingDirectory={install_dir}
 ExecStart={start_sh_path}
 Restart=always
-RestartSec=3
+RestartSec=10
 {log_data}
 
 [Install]
