@@ -495,7 +495,8 @@ def setup_install():
         print("...")
         start_sh_path = install_dir + sep + "start.sh"
         service_tmp_path = "/tmp/dozer.service"
-        service_file_path = os.path.expanduser("~/.config/systemd/user/dozer.service")
+        service_dir_path = os.path.expanduser("~/.config/systemd/user/")
+        service_file_path = service_dir_path + "dozer.service"
 
         log_data = ""
         match log_option:
@@ -537,6 +538,7 @@ def setup_install():
 
         with open(service_tmp_path, "w") as f:
             f.write(service_file_contents)
+        subprocess.run(["mkdir", "-p", service_dir_path])
         subprocess.run(["mv", service_tmp_path, service_file_path])
         print("Enabling...")
         subprocess.run(["systemctl", "enable", "--user", "dozer.service"])
