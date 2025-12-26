@@ -828,6 +828,47 @@ def setup_uninstall():
                     subprocess.run(["sudo", "rm", "-rf", unit + ".d"])
                     print("Removed systemd unit config at " + unit + ".d")
 
+    # remove logs if applicable
+    print()
+    # find logs
+    varlog_location = "/var/log/dozer.log"
+    cache_location = os.path.expanduser("~/.cache/dozer.log")
+
+    if not os.path.exists(varlog_location):
+        varlog_location = None
+    if not os.path.exists(cache_location):
+        cache_location = None
+
+    if varlog_location is not None or cache_location is not None:
+
+        # first give the user the list of files
+        print(f"Found log file{"s" if varlog_location is not None
+                                      and cache_location is not None else ""}:")
+        if varlog_location is not None:
+            print(f" * {varlog_location}")
+        if cache_location is not None:
+            print(f" * {cache_location}")
+        # then ask if they want them gone
+        confirm_remove_logs = confirm("Remove log files")
+
+        if confirm_remove_logs:
+            # i.e.
+            # no logs: <none>
+            # one log: Found log file:
+            # two logs: Found log files:
+
+            cont = confirm("Delete these logs")
+            if cont:
+                if varlog_location is not None:
+                    subprocess.run(["sudo", "rm", "-f", varlog_location])
+                    print("Removed " + varlog_location)
+                if cache_location is not None:
+                    os.remove(cache_location)
+                    print("Removed " + cache_location)
+            print()
+            print("Done. Check for any logrotate leftovers (if applicable).")
+    print()
+    print("Successfully uninstalled")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
