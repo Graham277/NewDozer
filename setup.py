@@ -715,16 +715,25 @@ def setup_uninstall():
         if os.path.exists(f"{location}{sep}.env"):
             back_option = confirm("Back up .env file", default_state=True)
             if back_option:
+                # keep trying until it works
                 while True:
-                    back_path = input("Choose a target path (default = ~/.env: ")
+                    back_path = input("Choose a target path (default = ~/.env): ")
+                    if not back_path:
+                        back_path = os.path.expanduser("~/.env")
+
+                    # manually move file to dodge permissions errors
                     try:
-                        os.rename(f"{location}{sep}.env", back_path)
-                    except FileExistsError as e:
+                        with open(f"{location}{sep}.env", "r") as i:
+                            with open(back_path, "w") as o:
+                                o.write(i.read())
+
+                    except FileExistsError:
                         print("File already exists at target")
                         continue
                     except OSError as e:
                         print("Could not move file: " + str(e))
                         continue
+
                     print("Successfully backed up .env")
                     break
 
