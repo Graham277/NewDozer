@@ -71,6 +71,8 @@ key=value
 multi_word_key="extra long entry with spaces!"
 ```
 
+A sample is provided in this project under `sample.env`.
+
 Make sure to remove trailing whitespace.
 
 If the `.env` file must be located in a different place (i.e. /run/secrets),
