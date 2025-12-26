@@ -1,4 +1,4 @@
-#!/usr/bin/env /usr/bin/python3
+#!/usr/bin/env python3
 #
 # ========= Setup =========
 # Standalone script to install files and to set up dependencies.
