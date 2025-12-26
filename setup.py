@@ -432,7 +432,7 @@ def setup_install():
         # create a new unit file
         start_sh_path = install_dir + sep + "start.sh"
         service_tmp_path = "/tmp/dozer.service"
-        service_file_path = "/lib/systemd/system/dozer.service"
+        service_file_path = "/etc/systemd/system/dozer.service"
 
         log_data = ""
         match log_option:
