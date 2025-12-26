@@ -233,6 +233,58 @@ The bot takes the following command-line parameter(s):
 
 Launch `main.py` with `python3` to run the app.
 
+# Uninstallation
+If using a simple (manual) installation, nothing is needed. The bot does not
+install files outside of its directory, unless `setup.py was used`. Note that
+some keyring remnants may remain; those can be removed without harm (as long as 
+they are not lost permanently).
+
+If using `setup.py`, run:
+```shell
+python3 setup.py uninstall
+```
+... which will do everything automatically. Keyring entries will remain as
+above. Make sure that secrets in `.env` are not permanently lost.
+
+> **Note**: Make sure there is another copy of the tokens in `.env`, because
+> they might be permanently lost after uninstallation. The uninstaller will
+> give you an option to copy it to a directory of your choice.
+
+## Manual uninstallation with `setup.py`
+If the setup script cannot uninstall the bot automatically, it can be removed
+manually.
+
+> **WARNING**: This set of instructions will permanently delete your `.env`
+> file, which could mean your Discord token is lost. Make sure a copy is stored
+> somewhere else.
+
+1. **Locate the installation directory**. If you forget, look in the following
+   folders for a directory named 'dozerbot':
+    * `/usr/local/share`
+    * `/opt`
+    * `~/.local/share`
+2. **Delete the folder**.
+3. **If using** either `/usr/local/share` or `~/.local/share`, remove the
+   broken symlinks.
+   
+   The files `main.py`, `start.sh` and `.env` are linked into `[...]/local/bin`
+   and `etc` as `bin/dozermain`, `bin/dozerstart` and `etc/dozer.env`. Unlink
+   those with `unlink`.
+4. **Delete the `systemd` units and configuration**, with:
+   ```shell
+   systemctl [--user] disable dozer.service
+   ```
+   Use `--user` if the bot was installed into the home directory.
+   
+   Then, **delete**:
+    * `<sysd>/dozer.service`
+    * `<sysd>/dozer.service.d/` (the whole folder, if it exists)
+   
+   ...where `<sysd>` is `~/.config/systemd/user` if installed into the home
+   directory, or `/etc/systemd/system` otherwise (most cases).
+5. (Optional) **Clean the logs**. If set up to use a logfile, you can delete it
+   from `~/.config/dozer.log` or `/var/log/dozer.log` (alongside any logrotate artifacts).
+
 # Troubleshooting
 * **If the bot throws an error about a locked keyring**, exit it and unlock the
 keyring before trying again.
