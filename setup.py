@@ -578,7 +578,7 @@ def setup_import():
     print("Where is secrets.json located?")
     print()
     while True:
-        secrets_path = input("Enter a path: ")
+        secrets_path = os.path.expanduser(input("Enter a path: "))
 
         if not os.path.exists(secrets_path):
             print(f"Couldn't find secrets file at {secrets_path}, try again.")
@@ -608,7 +608,7 @@ def setup_import():
             install_paths = ["/usr/local/share/dozerbot", "/opt/dozerbot", "~/.local/share/dozerbot"]
             install_path = install_paths[choose_option("Where is the bot installed? ", *install_paths)]
 
-            if not os.path.exists(install_path):
+            if not os.path.exists(os.path.expanduser(install_path)):
                 print(f"{install_path} does not exist, try again.")
                 continue
 
