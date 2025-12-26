@@ -651,6 +651,131 @@ def setup_import():
     else:
         print("Successfully imported secrets!")
 
+def setup_uninstall():
+    print()
+    print(" === Dozer Setup ===")
+    print("Version 1.0.0")
+    print("Task: Uninstall")
+    print()
+    print(*textwrap.wrap("See README.md for manual instructions if"
+                         " uninstallation does not work for whatever reason.",
+                         80), sep='\n')
+    print()
+
+    print("Finding installations...")
+
+    # installation locations
+    # dict to associate each "value" with other constant lists
+    possible_locations = ["/usr/local/share/dozerbot", "/opt/dozerbot",
+                          os.path.expanduser("~/.local/share/dozerbot")]
+    # some lookup tables to keep all of the constants in one place
+    unlink_locations = [
+        ["/usr/local/bin/dozermain", "/usr/local/bin/dozerstart",
+            "/usr/local/etc/dozer.env"],
+        [],
+        [os.path.expanduser("~/.local/bin/dozermain"),
+         os.path.expanduser("~/.local/bin/dozerstart"),
+         os.path.expanduser("~/.local/etc/dozer.env")],
+    ]
+    unit_locations = ["/etc/systemd/system/dozer.service",
+                      "/etc/systemd/system/dozer.service",
+                      "~/.config/systemd/user/dozer.service"]
+
+    # valid installations that were found
+    locations = []
+
+    for location in possible_locations:
+        if os.path.exists(location) and os.path.isdir(location) and\
+            os.path.exists(f"{location}{sep}main.py"):
+            locations.append(location)
+
+    if len(locations) == 0:
+        print("No installations found.")
+        print("See README.md for manual uninstallation instructions if this is incorrect.")
+        print()
+        exit(0)
+
+    print(f"Found installation{'s' if len(locations) > 1 else ''}:")
+    for location in locations:
+        print(f" * {location}")
+
+    print()
+    confirmation = confirm("Uninstall everything")
+
+    if not confirmation:
+        print("Abort. --- ")
+        sys.exit(1)
+
+    # uninstall everything
+    for location in locations:
+        print(f"Uninstalling {location}...")
+
+        # give option to back up .env
+        if os.path.exists(f"{location}{sep}.env"):
+            back_option = confirm("Back up .env file", default_state=True)
+            if back_option:
+                while True:
+                    back_path = input("Choose a target path (default = ~/.env: ")
+                    try:
+                        os.rename(f"{location}{sep}.env", back_path)
+                    except FileExistsError as e:
+                        print("File already exists at target")
+                        continue
+                    except OSError as e:
+                        print("Could not move file: " + str(e))
+                        continue
+                    print("Successfully backed up .env")
+                    break
+
+        is_user = is_subdir(os.path.expanduser("~"), location)
+
+        # find extra details
+        index = locations.index(location)
+        files_to_unlink: list[str] = unlink_locations[index]
+        unit = unit_locations[index]
+
+        if is_user:
+            # stop target
+            found_unit = os.path.exists(unit)
+            if found_unit:
+                subprocess.run(["systemctl", "--user", "stop", "dozer.service"])
+                subprocess.run(["systemctl", "--user", "disable", "dozer.service"])
+                print("Stopped and disabled service")
+
+            # reconfirm
+            print("Found the following targets with appropriate action:")
+            print(f" * directory {location}: remove tree")
+            for target in files_to_unlink:
+                print(f" * symlink {target}: unlink")
+            if found_unit:
+                print(f" * systemd unit file {unit}: delete")
+                if os.path.exists(unit + ".d"):
+                    print(f" * systemd unit config {unit + ".d"}: remove tree")
+
+            confirm_option = confirm("Do you want to continue")
+
+            if not confirm_option:
+                print("Abort. --- ")
+                continue
+
+            # unlink
+            for target in files_to_unlink:
+                os.unlink(target)
+                print("Unlinked " + target)
+
+            # remove tree (main)
+            shutil.rmtree(location)
+            print("Removed main installation files at " + location)
+
+            # delete unit
+            if found_unit:
+                os.remove(unit)
+                print("Removed systemd unit file at " + unit)
+                if os.path.exists(unit + ".d"):
+                    shutil.rmtree(unit + ".d")
+                    print("Removed systemd unit config at " + unit + ".d")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Missing subcommand.")
