@@ -235,7 +235,7 @@ Launch `main.py` with `python3` to run the app.
 
 # Uninstallation
 If using a simple (manual) installation, nothing is needed. The bot does not
-install files outside of its directory, unless `setup.py was used`. Note that
+install files outside of its directory, unless `setup.py` was used. Note that
 some keyring remnants may remain; those can be removed without harm (as long as 
 they are not lost permanently).
 
