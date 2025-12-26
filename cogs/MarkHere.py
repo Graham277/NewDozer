@@ -46,7 +46,7 @@ class MarkHere(commands.Cog):
             await interaction.response.send_message(content=f"Code is no longer valid!")
             return
 
-        interaction.response.defer()
+        await interaction.response.defer()
         # so commit the record to memory
         self.communicator.sheet_manager.add_line(timestamp, interaction.user.name, interaction.user.display_name, self.communicator.sheet_id)
         self.communicator.claimed_codes.append(code)
