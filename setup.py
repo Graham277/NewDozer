@@ -437,27 +437,30 @@ def setup_install():
         log_data = ""
         match log_option:
             case "null":
-                log_data = """
-                StandardOutput=/dev/null
-                StandardError=/dev/null
-                """
+                log_data = \
+"""
+StandardOutput=/dev/null
+StandardError=/dev/null
+"""
                 print("WARNING: The `null` log output was selected. This can"
                       "make troubleshooting much more difficult.")
                 print()
             case "cache":
-                log_data = f"""
-                StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
-                StandardError={os.path.expanduser("~/.cache/dozer.log")}
-                """
+                log_data = \
+f"""
+StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
+StandardError={os.path.expanduser("~/.cache/dozer.log")}
+"""
                 print("Note: It is recommended to set up a log rotation service"
                       " (like logrotate) to avoid having the log grow"
                       " uncontrollably.")
                 print()
             case "varlog":
-                log_data = f"""
-                StandardOutput=/var/log/dozer.log
-                StandardError=/var/log/dozer.log
-                """
+                log_data = \
+f"""
+StandardOutput=/var/log/dozer.log
+StandardError=/var/log/dozer.log
+"""
                 print("Note: It is recommended to set up a log rotation service"
                       " (like logrotate) to avoid having the log grow"
                       " uncontrollably.")
@@ -503,18 +506,20 @@ WantedBy=multi-user.target
         log_data = ""
         match log_option:
             case "null":
-                log_data = """
-                StandardOutput=/dev/null
-                StandardError=/dev/null
-                """
+                log_data = \
+"""
+StandardOutput=/dev/null
+StandardError=/dev/null
+"""
                 print("WARNING: The `null` log output was selected. This can"
                       "make troubleshooting much more difficult.")
                 print()
             case "cache":
-                log_data = f"""
-                StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
-                StandardError={os.path.expanduser("~/.cache/dozer.log")}
-                """
+                log_data = \
+f"""
+StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
+StandardError={os.path.expanduser("~/.cache/dozer.log")}
+"""
                 print("Note: It is recommended to set up a log rotation service"
                       " (like logrotate) to avoid having the log grow"
                       " uncontrollably.")
