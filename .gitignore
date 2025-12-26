@@ -1,8 +1,6 @@
 .idea/
 .vscode/
 .env
-db.sqlite
-db.sqlite-journal
 pycache
 **/__pycache__/
 .venv/
