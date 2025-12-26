@@ -466,21 +466,23 @@ def setup_install():
                 pass # default, no action needed
 
         # taken from nodejs version
-        service_file_contents = f"""
-        [Unit]
-        Description=Dozer discord bot
-        After=network.target
-        
-        [Service]
-        WorkingDirectory={install_dir}
-        ExecStart={start_sh_path}
-        Restart=always
-        RestartSec=3
-        {log_data}
-        
-        [Install]
-        WantedBy=multi-user.target
-        """
+        # bad formatting here but looks much nicer in situ
+        service_file_contents = \
+f"""
+[Unit]
+Description=Dozer discord bot
+After=network.target
+
+[Service]
+WorkingDirectory={install_dir}
+ExecStart={start_sh_path}
+Restart=always
+RestartSec=3
+{log_data}
+
+[Install]
+WantedBy=multi-user.target
+"""
 
         # cat into a temp file then move with sudo
         with open(service_tmp_path, "w") as f:
@@ -520,21 +522,23 @@ def setup_install():
             case "syslog":
                 pass # default, no action needed
 
-        service_file_contents = f"""
-        [Unit]
-        Description=Dozer discord bot
-        After=network.target
-        
-        [Service]
-        WorkingDirectory={install_dir}
-        ExecStart={start_sh_path}
-        Restart=always
-        RestartSec=3
-        {log_data}
-        
-        [Install]
-        WantedBy=default.target
-        """
+        # bad formatting here but looks much nicer in situ
+        service_file_contents = \
+f"""
+[Unit]
+Description=Dozer discord bot
+After=network.target
+
+[Service]
+WorkingDirectory={install_dir}
+ExecStart={start_sh_path}
+Restart=always
+RestartSec=3
+{log_data}
+
+[Install]
+WantedBy=default.target
+"""
 
         with open(service_tmp_path, "w") as f:
             f.write(service_file_contents)
@@ -627,19 +631,11 @@ def setup_import():
             # can use native functions
             pathlib.Path(unit_file_conf_path).mkdir(parents=True, exist_ok=True)
             with open(unit_file_conf_path + "10-creds.conf", "w") as f2:
-                f2.write(
-                    f"""
-                    [Service]
-                    {out}
-                    """)
+                f2.write(f"[Service]\n{out}\n")
         else:
             subprocess.run(["sudo", "mkdir", "-p", unit_file_conf_path])
             with open("/tmp/10-creds.conf", "w") as f2:
-                f2.write(
-                    f"""
-                    [Service]
-                    {out}
-                    """)
+                f2.write(f"[Service]\n{out}\n")
             subprocess.run(["sudo", "mv", "/tmp/10-creds.conf",
                             unit_file_conf_path + "10-creds.conf"])
 
