@@ -193,6 +193,7 @@ def setup_help():
     print()
     print("Available commands:")
     print(" - install: install the bot (guided)")
+    print(" - uninstall: uninstall the bot (guided)")
     print(" - import: import credentials from a secrets file (guided)")
     print(" - help: show this help")
 
@@ -836,7 +837,9 @@ if __name__ == "__main__":
         case "install":
             setup_install()
             sys.exit(0)
-        # TODO: add uninstall command
+        case "uninstall":
+            setup_uninstall()
+            sys.exit(0)
         case "help":
             print(" === Dozer Setup === ")
             print("Version 1.0.0")
