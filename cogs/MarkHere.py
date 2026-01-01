@@ -33,7 +33,8 @@ class MarkHere(commands.Cog):
 
     async def mark_here(self, interaction: discord.Interaction, code: int):
 
-        timestamp = datetime.datetime.now(datetime.UTC)
+        timestamp_utc = datetime.datetime.now(datetime.UTC)
+        timestamp_local = datetime.datetime.now()
         if code not in self.communicator.received_codes:
             await interaction.response.send_message(content=f"Code does not exist! Was it typed correctly?")
             return
@@ -42,13 +43,14 @@ class MarkHere(commands.Cog):
             await interaction.response.send_message(content=f"Code already claimed!")
             return
         # if code is no longer valid
-        if timestamp.timestamp() > self.communicator.received_codes[code]:
+        if timestamp_utc.timestamp() > self.communicator.received_codes[code]:
             await interaction.response.send_message(content=f"Code is no longer valid!")
             return
 
         await interaction.response.defer()
         # so commit the record to memory
-        self.communicator.sheet_manager.add_line(timestamp, interaction.user.name, interaction.user.display_name, self.communicator.sheet_id)
+        # use local time to make it more readable
+        self.communicator.sheet_manager.add_line(timestamp_local, interaction.user.name, interaction.user.display_name, self.communicator.sheet_id)
         self.communicator.claimed_codes.append(code)
         await interaction.followup.send(f"Marked {interaction.user.name} as present (code: {code})")
 
