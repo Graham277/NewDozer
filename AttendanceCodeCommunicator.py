@@ -6,6 +6,7 @@ import socket
 import sys
 import threading
 from enum import Enum
+from json import JSONDecodeError
 
 from dotenv import load_dotenv
 
@@ -161,7 +162,7 @@ class AttendanceCodeCommunicator:
                 if self._handshake(sock):
                     self.status = Status.CONNECTED
                     self._communicate_after_handshake(sock)
-            except socket.error as e:
+            except socket.error | JSONDecodeError as e:
                 if should_fail_on_exception:
                     logging.log(logging.ERROR, f"Exception raised during communication!")
                     raise e # terminates thread
