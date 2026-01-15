@@ -1,15 +1,26 @@
+#!/usr/bin/env python3
 import os
+import sys
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+import SheetsManager
+
 # Secrets are stored in a dotenv, so we must load it before trying to access it
-load_dotenv()
+# Before running, see if there is an environment variable called
+# DOZER_DOTENV_PATH.
+# If so, load it from there.
+dotenv_path = os.getenv("DOZER_DOTENV_PATH")
+if not dotenv_path:
+    dotenv_path = None
+load_dotenv(dotenv_path=dotenv_path)
 
 # Set up the bot
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
+disable_attendance = False
 
 # This is run when the bot is started by discord.py, it syncs the commands to the guilds specified
 @bot.event
@@ -36,11 +47,50 @@ async def load_extensions():
     await bot.load_extension("cogs.TBAStatus")
     await bot.load_extension("cogs.StatboticsStatus")
     await bot.load_extension("cogs.Watch")
+    if not disable_attendance:
+        await bot.load_extension("cogs.MarkHere")
     print("Extensions all loaded")
 
 
 # Loads slash commands, starts the bot
 if __name__ == "__main__":
+    # parse command line
+    for arg in sys.argv[1:]:
+        match arg:
+            case "--disable-attendance":
+                if not disable_attendance:
+                    disable_attendance = True
+                else:
+                    print(f"Duplicate argument {arg}")
+                    os._exit(2)
+            case "--import-secrets":
+                if disable_attendance:
+                    print(f"Cannot combine {arg} and --disable-attendance")
+                    os._exit(2)
+                # search for secrets and import them into the keyring
+                manager = SheetsManager.SheetManager()
+                manager.import_secrets()
+                print("Success! Make sure to never leave the keys in plaintext"
+                      " (keep an encrypted copy on another machine).")
+                sys.exit(0)
+            case _:  # default
+                print(f"Unrecognized argument {arg}")
+
+    # quickly check dotenv entries
+    if not os.getenv("token"):
+        print("No Discord token provided. Make sure .env is completely filled in.")
+        sys.exit(1)
+    if not os.getenv("guild_id") and not os.getenv("dev_guild_id"):
+        print("No guild ID provided. Make sure .env is completely filled in.")
+        sys.exit(1)
+    if not disable_attendance:
+        if not os.getenv("allowable_owner"):
+            print("No allowable owner provided. Make sure .env is completely filled in.")
+            sys.exit(1)
+        if not os.getenv("service_account"):
+            print("No GCP service account provided. Make sure .env is completely filled in.")
+            sys.exit(1)
+
     import asyncio
 
     asyncio.run(load_extensions())

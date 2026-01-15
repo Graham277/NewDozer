@@ -1,0 +1,879 @@
+#!/usr/bin/env python3
+#
+# ========= Setup =========
+# Standalone script to install files and to set up dependencies.
+# This script makes the following changes:
+#  1. Clones all project files into the selected directory. If appropriate,
+#     creates symlinks to `bin` directories.
+#  2. Creates a virtualenv in the installation directory.
+#  3. `pip install`s dependencies in the virtualenv.
+#  4. Creates a `systemd` service (if available) to run the bot.
+#     Created as a user service if installed into the home directory, system
+#     otherwise.
+#  5. Configures rsyslog if using system-wide service. Configures logrotate if
+#     using user service.
+# Requires sudo privileges.
+import os
+import pathlib
+import stat
+from os.path import sep
+import shutil
+import subprocess
+import sys
+import textwrap
+
+
+## Helper functions
+
+def choose_option(message: str, *options: str, default: int | None = None) -> int:
+    """
+    Present a list for the user to choose various options from.
+    The default option is chosen when the user enters '0' or nothing, and is
+    marked with an asterisk.
+    :param message: a header message to inform the user of the message's context
+    :param options: the set of options the user has
+    :param default: the index of the option that is chosen by default, or None if none
+    :return: the index of the option that was chosen
+    """
+
+    if options is None or len(options) == 0:
+        raise ValueError("choose_option needs a list of options. This is a bug.")
+
+    wrap_col = 80
+
+    # regularize to non-None int
+
+    # first print out the options
+    # all printed messages are wrapped in textwrap.wrap() and have sep='\n'
+    # this is so extra-long messages are put onto multiple lines.
+    print(*textwrap.wrap(message, wrap_col), sep='\n')
+    print()
+    # either:
+    # Choose an option [1-N, or 0 for default]: | if default not None
+    # Choose an option [1-N]:                   | if default None
+    print(*textwrap.wrap(f"Choose an option [1-{len(options)}"
+          f"{", or 0 for default" if default is not None else ""}]:", wrap_col),
+          sep='\n')
+
+    # offset = how long the last index is
+    offset = len(str(len(options)))
+    number = 1
+    # print each option. each number is space-buffered from the left if it is
+    # not max length.
+    # default is marked with an asterisk
+    for option in options:
+        buffer = " " * (offset - len(str(number)))
+        if default is not None and default + 1 == number:
+            # either (default selected):
+            # | * NNN. option placeholder
+            # |   NNN. option placeholder
+            # or (no default):
+            # | NNN. option placeholder
+            # | NNN. option placeholder
+            print(*textwrap.wrap(f"{" *" if default is not None else ""} {buffer}"
+                                f"{number}. {option}", wrap_col), sep='\n')
+        else:
+            print(*textwrap.wrap(f"{"  " if default is not None else ""} {buffer}"
+                                f"{number}. {option}", wrap_col), sep='\n')
+        number += 1
+
+    print()
+
+    # get choice
+    # keep doing it until a valid input is reached
+
+    # choice_start: lowest valid integer for choice
+    choice_start = 0 if default is not None else 1
+    while True:
+        # wait for input
+        # either:
+        # Choice [0-N]:
+        # or:
+        # Choice [1-N]:
+        val = input(f"Choice [{choice_start}-{len(options)}]: ")
+
+        # validate input
+        # first, if the string is empty, that means the default was chosen
+        if not val:
+            val = "0"
+
+        # check: value is an integer
+        try:
+            val_index: int = int(val) - 1
+        except ValueError:
+            print("Invalid input (not a number), please try again.")
+            continue
+
+        # from now on, index starts at 0 and default == -1
+        # check: value is not default if default is unset
+        if default is None and val_index == -1:
+            print("Invalid input (no default option), please try again.")
+            continue
+
+        # collapse default value
+        # default is not None already implied here
+        if val_index == -1 and default is not None:
+            val_index = default
+
+        # check: value in range
+        if val_index < 0 or val_index >= len(options):
+            print(f"Input out of range ({choice_start}-{len(options)}), please try again.")
+            continue
+
+        # all good
+        return val_index
+
+    assert False, "Unreachable state"
+
+def confirm(message: str, *, default_state: bool | None = None) -> bool:
+    """
+    Presents the user with a confirmation message, which they can respond to in
+    various ways.
+
+    The values "y", "yes" and "true" yield `True`, while "n", "no" and "false"
+    yield `False`, an empty string results in the default value, and anything
+    else makes the user try again.
+    :param message:
+    :param default_state: the option to return if the user inputs nothing, or
+                          None if this is not a valid option
+    :return: a `bool` representing the user's choice
+    """
+
+    # essentially:
+    # default is False  -> y/N
+    # default is True   -> Y/n
+    # default is None   -> y/n
+    possible_inputs = (f"[{'y' if not default_state or default_state is None else 'Y'}/"
+                       f"{'n' if default_state or default_state is None else 'N'}]")
+    val = input(message + " " + possible_inputs + "? ")
+    while True:
+        # if nothing was entered, use default
+        if not val or len(val.strip()) == 0:
+            if default_state is not None:
+                return default_state
+            # if default is None, reject it and try again
+            else:
+                val = input(f"Invalid input. {possible_inputs}? ")
+                continue
+        else:
+            # if it is yes, true
+            if val.strip().lower() in ("y", "yes", "true"):
+                return True
+            # if no, false
+            elif val.strip().lower() in ("n", "no", "false"):
+                return False
+            # if invalid, go again
+            else:
+                val = input(f"Invalid input. {possible_inputs}? ")
+                continue
+
+    assert False, "Unreachable state"
+
+def wait():
+    """
+    Waits for the user to press enter.
+    :return: nothing
+    """
+    input("Press enter to continue...")
+
+def is_subdir(parent: str | os.PathLike, child: str | os.PathLike) -> bool:
+    """
+    Checks if the child is a subdirectory of or equal to the parent.
+    :param parent: the parent directory
+    :param child: the child, which might be a child of the parent
+    :return: bool: whether the child is a subdirectory of the parent
+    """
+    parent_real = os.path.realpath(os.path.abspath(os.path.expanduser(parent)))
+    child_real = os.path.realpath(os.path.abspath(os.path.expanduser(child)))
+    return parent_real == os.path.commonpath([parent_real, child_real])
+
+def setup_help():
+    print()
+    print("Usage: python setup.py <command>")
+    print()
+    print("Available commands:")
+    print(" - install: install the bot")
+    print(" - uninstall: uninstall the bot")
+    print(" - import: import credentials from a secrets file")
+    print(" - help: show this help")
+
+def setup_install():
+    """
+    Main routine that handles all functions.
+    :return: nothing
+    """
+
+    subdir_name = "dozerbot"
+    wrap_width = 80
+
+    print(" === Dozer Setup === ")
+    print("Version 1.0.0")
+    print("Task: Install")
+    print()
+    print("Step 1 - gathering information...")
+    print()
+
+    # get information
+
+    # only supports Linux atm
+    if not sys.platform.startswith("linux"):
+        print("ERROR: This install script is only supported on Linux (and similar) systems.")
+        print("Abort. ---")
+        sys.exit(1)
+
+    # check deps (virtualenv)
+    if shutil.which("virtualenv") is None:
+        print(*textwrap.wrap("ERROR: no installed copy of virtualenv was found, which is"
+              " required for installation. Please check $PATH and install it if"
+              " necessary.", wrap_width), sep='\n')
+        print("Abort. ---")
+        sys.exit(1)
+
+    # get the install directory
+    install_targets = ["/usr/local/share", "/opt", "~/.local/share"]
+    bin_path_targets = ["/usr/local/bin", "/opt", "~/.local/bin"]
+    etc_path_targets = ["/usr/local/etc", "/opt", "~/.local/etc"]
+    annotated_install_targets = [
+        "Into /usr/local/share, linked into /usr/local/bin and etc",
+        "Into /opt, in its own subdirectory",
+        "Into ~/.local/share, linked into ~/.local/bin and etc",]
+    option = choose_option(
+        "Which directory should the bot be installed into?\n",
+        *annotated_install_targets, default=1) # default is /opt
+
+    install_parent_target_abs = os.path.realpath(os.path.abspath(
+        os.path.expanduser(install_targets[option])
+    ))
+    bin_path_target_abs = os.path.realpath(os.path.abspath(
+        os.path.expanduser(bin_path_targets[option])
+    ))
+    etc_path_target_abs = os.path.realpath(os.path.abspath(
+        os.path.expanduser(etc_path_targets[option])
+    ))
+
+    # check $PATH
+    path = os.getenv("PATH")
+    path_entries = path.split(os.pathsep)
+    has_found_current = False
+
+    # this awful mess just gets the real path of a file
+    # (i.e. no symlinks, tildes or relative components)
+    # this loop checks if the selected directory is in PATH
+    for entry in path_entries:
+        entry_test_dir = os.path.realpath(os.path.abspath(os.path.expanduser(entry)))
+        if entry_test_dir == bin_path_target_abs:
+            has_found_current = True
+            break
+
+    # warn user if their installation dir is not in PATH
+    if not has_found_current:
+        print()
+        print(*textwrap.wrap("WARNING: Cannot find " + bin_path_target_abs +
+              " in $PATH. This will not prevent installation, but may cause"
+              " issues if running directly from the command line.",
+                             wrap_width), sep='\n')
+        print(*textwrap.wrap("It is recommended to add the directory to PATH if"
+                             " you plan on using it directly from the command"
+                             " line.", wrap_width), sep='\n')
+
+    print()
+    wait()
+
+    # install!
+    print()
+    print("Step 2 - installing files...")
+    print()
+
+    install_dir = install_parent_target_abs + sep + subdir_name
+    print("Starting copy...")
+
+    print("The installer will now ask for superuser permissions.")
+
+    # copy files
+    try:
+        # make sure directories exist
+        subprocess.run(["sudo", "mkdir", "-p", install_dir])
+        subprocess.run(["sudo", "cp", "-r", ".", install_dir])
+        # and make sure anyone can execute
+        subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "main.py"])
+        subprocess.run(["sudo", "chmod", "+x", install_dir + sep + "start.sh"])
+        # make sure .env exists
+        subprocess.run(["sudo", "touch", install_dir + sep + ".env"])
+
+        print("Success!")
+        print()
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: Failed to copy files! (exit code {e.returncode},"
+              f" message: {str(e)})")
+        print("Abort. ---")
+        sys.exit(1)
+
+    # symlink bin and etc directories
+
+    if install_parent_target_abs != bin_path_target_abs:
+        print("Linking installation...")
+
+        # make links
+        # each link points from the base directory to the appropriate folder
+        # (just as an alias)
+        #
+        # secrets.json is specifically excluded because it shouldn't exist most
+        # of the time
+        # .env can also point somewhere else if required
+        # make sure symlinking directories exist
+        subprocess.run(["sudo", "mkdir", "-p", bin_path_target_abs])
+        subprocess.run(["sudo", "mkdir", "-p", etc_path_target_abs])
+
+        # bin
+        subprocess.run(["sudo", "-E", "ln", "-s",
+                        install_dir + sep + "main.py",
+                        bin_path_target_abs + sep + "dozermain"])
+        subprocess.run(["sudo", "-E", "ln", "-s",
+                        install_dir + sep + "start.sh",
+                        bin_path_target_abs + sep + "dozerstart"])
+        # etc
+        subprocess.run(["sudo", "-E", "ln", "-s",
+                        install_dir + sep + ".env",
+                        etc_path_target_abs + sep + "dozer.env"])
+        print()
+        print(*textwrap.wrap(
+            f"Success! Executables and configuration may be also found at "
+            f"{bin_path_target_abs + sep + "dozermain"} (for main.py), "
+            f"{bin_path_target_abs + sep + "dozerstart"} (for start.sh), and "
+            f"{(etc_path_target_abs + sep + "dozer.env")} (for .env).",
+            wrap_width), sep='\n')
+
+    # done
+
+    # make venv
+    print()
+    print("Step 3 - creating virtual environment...")
+    print()
+
+    venv_folder = install_dir + sep + ".venv"
+    try:
+        print("Creating...")
+        print()
+        subprocess.run(["sudo", "-E", "virtualenv", venv_folder])
+        print()
+        print("Success!")
+        # cannot source it so it has to be explicitly called every time
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: Failed to create virtual environment! (exit code"
+              f" {e.returncode}, message: {str(e)})")
+        print("Abort. ---")
+        sys.exit(1)
+    # done
+
+    # get pip deps
+    print()
+    print("Step 4 - installing dependencies...")
+    print()
+
+    try:
+        print("Installing dependencies from requirements.txt...")
+        print()
+        print(" -------- pip output begins -------- ")
+        print()
+        subprocess.run(["sudo", "-E", venv_folder + sep + "bin" + sep + "pip",
+                        "install", "-r", install_dir + sep + "requirements.txt"])
+        print()
+        print(" --------  pip output ends  -------- ")
+        print()
+        print("Success!")
+        print()
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: Failed to install dependencies! (exit code"
+              f" {e.returncode}, message: {str(e)})")
+        print("Abort. ---")
+        sys.exit(1)
+
+    print()
+    print("Step 5 - creating system service...")
+    print()
+
+    is_system = not is_subdir(os.path.expanduser("~"), install_dir)
+    log_options_annotated = ["Sink (/dev/null)", "To ~/.cache/dozer.log",
+                             "To /var/log/dozer.log", "To syslog"]
+    if not is_system:
+        log_options_annotated.remove("To /var/log/dozer.log")
+    log_options = ["null", "cache", "varlog", "syslog"]
+    if not is_system:
+        log_options.remove("varlog")
+    log_option = log_options[choose_option("Where should log messages be sent?",
+                                           *log_options_annotated,
+                                           default=3 if is_system else 2)]
+
+    # create a systemd file
+    if is_system:
+        print("Creating as a system-wide systemd unit")
+        print("...")
+        # create a new unit file
+        start_sh_path = install_dir + sep + "start.sh"
+        service_tmp_path = "/tmp/dozer.service"
+        service_file_path = "/etc/systemd/system/dozer.service"
+
+        log_data = ""
+        match log_option:
+            case "null":
+                log_data = \
+"""
+StandardOutput=/dev/null
+StandardError=/dev/null
+"""
+                print("WARNING: The `null` log output was selected. This can"
+                      " make troubleshooting much more difficult.")
+                print()
+            case "cache":
+                log_data = \
+f"""
+StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
+StandardError={os.path.expanduser("~/.cache/dozer.log")}
+"""
+                print("Note: It is recommended to set up a log rotation service"
+                      " (like logrotate) to avoid having the log grow"
+                      " uncontrollably.")
+                print()
+            case "varlog":
+                log_data = \
+f"""
+StandardOutput=/var/log/dozer.log
+StandardError=/var/log/dozer.log
+"""
+                print("Note: It is recommended to set up a log rotation service"
+                      " (like logrotate) to avoid having the log grow"
+                      " uncontrollably.")
+                print()
+            case "syslog":
+                pass # default, no action needed
+
+        # taken from nodejs version
+        # bad formatting here but looks much nicer in situ
+        service_file_contents = \
+f"""
+[Unit]
+Description=Dozer discord bot
+After=network.target
+
+[Service]
+WorkingDirectory={install_dir}
+ExecStart={start_sh_path}
+Restart=always
+RestartSec=10
+{log_data}
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+        # cat into a temp file then move with sudo
+        with open(service_tmp_path, "w") as f:
+            f.write(service_file_contents)
+        subprocess.run(["sudo", "mv", service_tmp_path, service_file_path])
+        print("Enabling...")
+        subprocess.run(["sudo", "systemctl", "enable", "dozer.service"])
+
+        print("Success! Try systemctl start dozer.service")
+    else:
+        print("Creating as a user systemd unit")
+        print("...")
+        start_sh_path = install_dir + sep + "start.sh"
+        service_tmp_path = "/tmp/dozer.service"
+        service_dir_path = os.path.expanduser("~/.config/systemd/user/")
+        service_file_path = service_dir_path + "dozer.service"
+
+        log_data = ""
+        match log_option:
+            case "null":
+                log_data = \
+"""
+StandardOutput=/dev/null
+StandardError=/dev/null
+"""
+                print("WARNING: The `null` log output was selected. This can"
+                      "make troubleshooting much more difficult.")
+                print()
+            case "cache":
+                log_data = \
+f"""
+StandardOutput={os.path.expanduser("~/.cache/dozer.log")}
+StandardError={os.path.expanduser("~/.cache/dozer.log")}
+"""
+                print("Note: It is recommended to set up a log rotation service"
+                      " (like logrotate) to avoid having the log grow"
+                      " uncontrollably.")
+                print()
+            case "syslog":
+                pass # default, no action needed
+
+        # bad formatting here but looks much nicer in situ
+        service_file_contents = \
+f"""
+[Unit]
+Description=Dozer discord bot
+After=network.target
+
+[Service]
+WorkingDirectory={install_dir}
+ExecStart={start_sh_path}
+Restart=always
+RestartSec=10
+{log_data}
+
+[Install]
+WantedBy=default.target
+"""
+
+        with open(service_tmp_path, "w") as f:
+            f.write(service_file_contents)
+        subprocess.run(["mkdir", "-p", service_dir_path])
+        subprocess.run(["mv", service_tmp_path, service_file_path])
+        print("Enabling...")
+        subprocess.run(["systemctl", "enable", "--user", "dozer.service"])
+
+        print("Success! Try systemctl --user start dozer.service")
+
+    print()
+    print("Successfully installed Dozer bot.")
+    print()
+    print(*textwrap.wrap("Note: A keyring (a DBus Secret Service provider) is"
+                         " required to run the bot with attendance features."
+                         " Ensure one is installed before running the bot for"
+                         " the first time.", wrap_width), sep='\n')
+    print()
+    print("You will probably also need to manually import credentials.")
+    print("For that, run setup.py with the subcommand 'import'.")
+
+def setup_import():
+    print()
+    print(" === Dozer Setup ===")
+    print("Version 1.0.0")
+    print("Task: Import secrets")
+    print()
+
+    # import systemd secrets
+
+    print("Where is secrets.json located?")
+    print()
+    while True:
+        secrets_path = os.path.expanduser(input("Enter a path: "))
+
+        if not os.path.exists(secrets_path):
+            print(f"Couldn't find secrets file at {secrets_path}, try again.")
+            print()
+            continue
+        if not os.path.isfile(secrets_path):
+            print(f"{secrets_path} path is not a file, try again.")
+            print()
+            continue
+
+        break
+
+    cred_locations = ["Into keyring", "Into the unit file (encrypted)", "Cancel"]
+    cred_location = cred_locations[choose_option("How should the"
+                                                 " credentials be imported?",
+                                                 *cred_locations, default=1)]
+
+    if cred_location == "Cancel":
+        print("Abort. --- ")
+        sys.exit(0)
+
+    is_systemd = False if cred_location == "Into keyring" else True
+    is_system = False # early assignment for the print
+
+    if is_systemd:
+        while True:
+            install_paths = ["/usr/local/share/dozerbot", "/opt/dozerbot", "~/.local/share/dozerbot"]
+            install_path = install_paths[choose_option("Where is the bot installed? ", *install_paths)]
+
+            if not os.path.exists(os.path.expanduser(install_path)):
+                print(f"{install_path} does not exist, try again.")
+                continue
+
+            break
+
+        is_system = not install_path.startswith("~")
+        unit_file_conf_path = os.path.expanduser("~/.config/systemd/user/dozer.service.d/")\
+            if not is_system else "/etc/systemd/system/dozer.service.d/"
+        unit_file_path = os.path.expanduser("~/.config/systemd/user/dozer.service")\
+            if not is_system else "/etc/systemd/system/dozer.service"
+
+        if not os.path.exists(unit_file_path):
+            print(f"ERROR: {unit_file_path} does not exist.")
+            print("Abort. --- ")
+            sys.exit(1)
+
+        print(f"Using {"system" if is_system else "user"} service's unit file")
+
+        # encrypt
+        print("The script will now ask for superuser (required for encryption).")
+        out = subprocess.check_output(["sudo", "systemd-creds", "encrypt", "-p",
+                        "--name=service_auth", secrets_path, "-"], text=True)
+
+        # write to conf
+        if not is_system:
+            # can use native functions
+            pathlib.Path(unit_file_conf_path).mkdir(parents=True, exist_ok=True)
+            with open(unit_file_conf_path + "10-creds.conf", "w") as f2:
+                f2.write(f"[Service]\n{out}\n")
+        else:
+            subprocess.run(["sudo", "mkdir", "-p", unit_file_conf_path])
+            with open("/tmp/10-creds.conf", "w") as f2:
+                f2.write(f"[Service]\n{out}\n")
+            subprocess.run(["sudo", "mv", "/tmp/10-creds.conf",
+                            unit_file_conf_path + "10-creds.conf"])
+
+    print()
+    if is_systemd:
+        print(f"Successfully imported secrets! Try systemctl"
+              f" {"--user" if not is_system else ""} restart dozer.service")
+    else:
+        print("Successfully imported secrets!")
+
+def setup_uninstall():
+    print()
+    print(" === Dozer Setup ===")
+    print("Version 1.0.0")
+    print("Task: Uninstall")
+    print()
+    print(*textwrap.wrap("See README.md for manual instructions if"
+                         " uninstallation does not work for whatever reason.",
+                         80), sep='\n')
+    print()
+
+    print("Finding installations...")
+
+    # installation locations
+    # dict to associate each "value" with other constant lists
+    possible_locations = ["/usr/local/share/dozerbot", "/opt/dozerbot",
+                          os.path.expanduser("~/.local/share/dozerbot")]
+    # some lookup tables to keep all of the constants in one place
+    unlink_locations = [
+        ["/usr/local/bin/dozermain", "/usr/local/bin/dozerstart",
+            "/usr/local/etc/dozer.env"],
+        [],
+        [os.path.expanduser("~/.local/bin/dozermain"),
+         os.path.expanduser("~/.local/bin/dozerstart"),
+         os.path.expanduser("~/.local/etc/dozer.env")],
+    ]
+    unit_locations = ["/etc/systemd/system/dozer.service",
+                      "/etc/systemd/system/dozer.service",
+                      "~/.config/systemd/user/dozer.service"]
+
+    # valid installations that were found
+    locations = []
+
+    for location in possible_locations:
+        if os.path.exists(location) and os.path.isdir(location) and\
+            os.path.exists(f"{location}{sep}main.py"):
+            locations.append(location)
+
+    if len(locations) == 0:
+        print("No installations found.")
+        print("See README.md for manual uninstallation instructions if this is incorrect.")
+        print()
+        exit(0)
+
+    print(f"Found installation{'s' if len(locations) > 1 else ''}:")
+    for location in locations:
+        print(f" * {location}")
+
+    print()
+    confirmation = confirm("Uninstall everything")
+
+    if not confirmation:
+        print("Abort. --- ")
+        sys.exit(1)
+
+    # uninstall everything
+    for location in locations:
+        print(f"Uninstalling {location}...")
+
+        # give option to back up .env
+        if os.path.exists(f"{location}{sep}.env"):
+            back_option = confirm("Back up .env file", default_state=True)
+            if back_option:
+                # keep trying until it works
+                while True:
+                    back_path = input("Choose a target path (default = ~/.env): ")
+                    if not back_path:
+                        back_path = os.path.expanduser("~/.env")
+
+                    # manually move file to dodge permissions errors
+                    try:
+                        with open(f"{location}{sep}.env", "r") as i:
+                            with open(back_path, "w") as o:
+                                o.write(i.read())
+
+                    except FileExistsError:
+                        print("File already exists at target")
+                        continue
+                    except OSError as e:
+                        print("Could not move file: " + str(e))
+                        continue
+
+                    print("Successfully backed up .env")
+                    break
+
+        is_user = is_subdir(os.path.expanduser("~"), location)
+
+        # find extra details
+        index = possible_locations.index(location)
+        files_to_unlink: list[str] = unlink_locations[index]
+        unit = unit_locations[index]
+
+        if is_user:
+            # stop target
+            found_unit = os.path.exists(unit)
+            if found_unit:
+                subprocess.run(["systemctl", "--user", "stop", "dozer.service"])
+                subprocess.run(["systemctl", "--user", "disable", "dozer.service"])
+                print("Stopped and disabled service")
+
+            # reconfirm
+            print("Found the following targets with appropriate action:")
+            print(f" * directory {location}: remove tree")
+            for target in files_to_unlink:
+                print(f" * symlink {target}: unlink")
+            if found_unit:
+                print(f" * systemd unit file {unit}: delete")
+                if os.path.exists(unit + ".d"):
+                    print(f" * systemd unit config {unit + ".d"}: remove tree")
+
+            confirm_option = confirm("Do you want to continue")
+
+            if not confirm_option:
+                print("Abort. --- ")
+                continue
+
+            # unlink
+            for target in files_to_unlink:
+                os.unlink(target)
+                print("Unlinked " + target)
+
+            # remove tree (main)
+            shutil.rmtree(location)
+            print("Removed main installation files at " + location)
+
+            # delete unit
+            if found_unit:
+                os.remove(unit)
+                print("Removed systemd unit file at " + unit)
+                if os.path.exists(unit + ".d"):
+                    shutil.rmtree(unit + ".d")
+                    print("Removed systemd unit config at " + unit + ".d")
+        else:
+            # stop target
+            found_unit = os.path.exists(unit)
+            if found_unit:
+                subprocess.run(["sudo", "systemctl", "stop", "dozer.service"])
+                subprocess.run(["sudo", "systemctl", "disable", "dozer.service"])
+                print("Stopped and disabled service")
+
+            # reconfirm
+            print("Found the following targets with appropriate actions:")
+            print(f" * directory {location}: remove tree")
+            for target in files_to_unlink:
+                print(f" * symlink {target}: unlink")
+            if found_unit:
+                print(f" * systemd unit file {unit}: delete")
+                if os.path.exists(unit + ".d"):
+                    print(f" * systemd unit config {unit + ".d"}: remove tree")
+            print("(remove tree = delete all subdirectories, and then the"
+                  " directory itself)")
+            print()
+
+            confirm_option = confirm("Do you want to continue")
+
+            if not confirm_option:
+                print("Abort. --- ")
+                continue
+
+            # unlink
+            for target in files_to_unlink:
+                subprocess.run(["sudo", "unlink", target])
+                print("Unlinked " + target)
+
+            # remove tree (main)
+            subprocess.run(["sudo", "rm", "-rf", location])
+            print("Removed main installation files at " + location)
+
+            # delete unit
+            if found_unit:
+                subprocess.run(["sudo", "rm", "-f", unit])
+                print("Removed systemd unit file at " + unit)
+                if os.path.exists(unit + ".d"):
+                    subprocess.run(["sudo", "rm", "-rf", unit + ".d"])
+                    print("Removed systemd unit config at " + unit + ".d")
+
+    # remove logs if applicable
+    print()
+    # find logs
+    varlog_location = "/var/log/dozer.log"
+    cache_location = os.path.expanduser("~/.cache/dozer.log")
+
+    if not os.path.exists(varlog_location):
+        varlog_location = None
+    if not os.path.exists(cache_location):
+        cache_location = None
+
+    if varlog_location is not None or cache_location is not None:
+
+        # first give the user the list of files
+        print(f"Found log file{"s" if varlog_location is not None
+                                      and cache_location is not None else ""}:")
+        if varlog_location is not None:
+            print(f" * {varlog_location}")
+        if cache_location is not None:
+            print(f" * {cache_location}")
+        # then ask if they want them gone
+        confirm_remove_logs = confirm("Remove log files")
+
+        if confirm_remove_logs:
+            # i.e.
+            # no logs: <none>
+            # one log: Found log file:
+            # two logs: Found log files:
+
+            cont = confirm("Delete these logs")
+            if cont:
+                if varlog_location is not None:
+                    subprocess.run(["sudo", "rm", "-f", varlog_location])
+                    print("Removed " + varlog_location)
+                if cache_location is not None:
+                    os.remove(cache_location)
+                    print("Removed " + cache_location)
+            print()
+            print("Done. Check for any logrotate leftovers (if applicable).")
+    print()
+    print("Successfully uninstalled")
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Missing subcommand.")
+        setup_help()
+        sys.exit(1)
+    if len(sys.argv) > 2:
+        print("Too many arguments.")
+        setup_help()
+        sys.exit(1)
+
+    match sys.argv[1]:
+        case "import":
+            setup_import()
+            sys.exit(0)
+        case "install":
+            setup_install()
+            sys.exit(0)
+        case "uninstall":
+            setup_uninstall()
+            sys.exit(0)
+        case "help":
+            print(" === Dozer Setup === ")
+            print("Version 1.0.0")
+            print("Task: Help")
+            setup_help()
+        case _:
+            print("Unknown command.")
+            setup_help()
+            sys.exit(1)
