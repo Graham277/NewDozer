@@ -53,7 +53,6 @@ class TeamData(commands.Cog):
             # Get statbotics data
             mean_epa, overall_rank, district_rank = await get_statbotics_data(interaction, team)
 
-            # Only if the data is returned is it added to the output
             if mean_epa and overall_rank and district_rank and tba_output:
                 output = (f"**EPA:** {mean_epa} "
                           f"\n**Global Rank (EPA):** {overall_rank} "

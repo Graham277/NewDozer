@@ -24,7 +24,6 @@ Requires the discord.py, statbotics, requests, pillow, and dotenv libraries
   (see https://www.thebluealliance.com/apidocs)
 - Implement the following slash commands:
   - Alliances
-  - Rankings
   - EPA Rankings
   - Events
   - Match

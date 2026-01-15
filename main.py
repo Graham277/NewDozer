@@ -36,6 +36,7 @@ async def load_extensions():
     await bot.load_extension("cogs.TBAStatus")
     await bot.load_extension("cogs.StatboticsStatus")
     await bot.load_extension("cogs.Watch")
+    await bot.load_extension("cogs.Rankings")
     print("Extensions all loaded")
 
 
