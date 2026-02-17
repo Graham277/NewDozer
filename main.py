@@ -44,10 +44,12 @@ async def load_extensions():
     await bot.load_extension("cogs.ScoringGuide")
     await bot.load_extension("cogs.NoBlueBanners")
     await bot.load_extension("cogs.TeamData")
-    await bot.load_extension("cogs.Status")
+    await bot.load_extension("cogs.TBAStatus")
+    await bot.load_extension("cogs.StatboticsStatus")
     await bot.load_extension("cogs.Watch")
     if not disable_attendance:
         await bot.load_extension("cogs.MarkHere")
+    await bot.load_extension("cogs.Rankings")
     print("Extensions all loaded")
 
 

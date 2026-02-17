@@ -4,10 +4,11 @@ import os
 
 import discord
 import requests
+import statbotics
 from discord import app_commands
 from discord.ext import commands
 
-class Status(commands.Cog):
+class TBAStatus(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -22,7 +23,7 @@ class Status(commands.Cog):
 
     @app_commands.guilds(*guild_ids)
     @app_commands.command(
-        name="status",
+        name="tba_status",
         description="Get the current status of the blue alliance"
     )
     async def status(self, interaction: discord.Interaction):
@@ -30,6 +31,7 @@ class Status(commands.Cog):
         await interaction.response.defer()
 
         try:
+
             tba_key = os.getenv("tba_key")
             headers = {"X-TBA-Auth-Key": tba_key}
 
@@ -70,4 +72,4 @@ class Status(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Status(bot))
+    await bot.add_cog(TBAStatus(bot))
